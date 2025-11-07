@@ -48,14 +48,14 @@
             box-shadow: none;
         }
         
-        /* Estilo para el ícono de eliminar foto */
-        .delete-icon {
-            opacity: 0.8;
-            transition: opacity 0.2s;
+        /* Estilo para la cuadrícula de fotos con sombreado de tarjeta */
+        .photo-slot {
+            transition: transform 0.2s;
         }
-        .delete-icon:hover {
-            opacity: 1;
+        .photo-slot:hover {
+            transform: translateY(-2px);
         }
+
     </style>
 </head>
 <body>
@@ -123,8 +123,15 @@
     </div>
 
     <script>
-        // Definir el color azul oscuro personalizado
-        const DARK_BLUE = '#0A1128'; 
+        // Definir el color azul oscuro personalizado (RGB de #0A1128)
+        const DARK_BLUE_R = 10;
+        const DARK_BLUE_G = 17;
+        const DARK_BLUE_B = 40;
+        // Color de fondo sutil para las etiquetas en la tabla de datos
+        const LIGHT_BLUE_GRAY_R = 240; 
+        const LIGHT_BLUE_GRAY_G = 240; 
+        const LIGHT_BLUE_GRAY_B = 255; 
+
 
         // Inicialización de Variables Globales
         let photos = new Array(4).fill(null);
@@ -162,9 +169,9 @@
          */
         function addFooter(doc) {
             const footerText = "Venezuela 4109 – Vicente Lopez – CP: 1603 - Villa Martelli – WWW.SMIARGENTINA.COM.AR";
-            doc.setFontSize(9); // Un poco más grande para el footer
+            doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
-            doc.setTextColor(DARK_BLUE); // Usa el color azul oscuro
+            doc.setTextColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B); // Usa el color azul oscuro
             doc.text(footerText, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 12, null, null, "center");
             doc.setTextColor(0, 0, 0); // Vuelve a negro
         }
@@ -178,7 +185,8 @@
             photoGrid.innerHTML = '';
             photos.forEach((photoDataUrl, index) => {
                 const slotDiv = document.createElement('div');
-                slotDiv.className = 'w-full aspect-square bg-gray-100 border-2 border-dashed border-gray-400 rounded-xl overflow-hidden flex items-center justify-center relative shadow-md';
+                // Añadimos shadow-xl y la clase photo-slot para mejor estética en la web.
+                slotDiv.className = 'photo-slot w-full aspect-square bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl overflow-hidden flex items-center justify-center relative shadow-xl';
 
                 if (photoDataUrl) {
                     slotDiv.innerHTML = `
@@ -270,11 +278,12 @@
                 const description = document.getElementById('report-details').value || "No se proporcionó ninguna descripción.";
                 const capturedPhotos = photos.filter(p => p !== null);
                 const margin = 15;
-                let y = margin;
                 const pageHeight = doc.internal.pageSize.height;
-
+                const pageWidth = doc.internal.pageSize.width;
+                let y = margin;
+                
                 // --- Logo SMI (Texto) y Subtítulo ---
-                doc.setTextColor(DARK_BLUE);
+                doc.setTextColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B);
                 doc.setFontSize(14);
                 doc.setFont("helvetica", "bold");
                 doc.text("SMI Argentina", margin, y);
@@ -282,92 +291,126 @@
                 doc.setFontSize(9);
                 doc.setFont("helvetica", "normal");
                 doc.text("Raising Business", margin, y);
-                y += 10; 
+                y += 8; 
                 doc.setTextColor(0, 0, 0); 
 
-                // --- Título del Informe ---
-                doc.setFontSize(24);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(DARK_BLUE);
-                doc.text("INFORME TÉCNICO FOTOGRÁFICO", doc.internal.pageSize.width / 2, margin + 15, null, null, "center"); 
-                doc.setTextColor(0, 0, 0); 
+                // --- Título del Informe (Con Banner Estético) ---
+                const titleText = "INFORME TÉCNICO FOTOGRÁFICO";
+                const bannerHeight = 10;
+                const bannerY = margin + 15 - bannerHeight / 2 - 2; 
+
+                // Dibuja el banner azul claro
+                doc.setFillColor(230, 230, 250); // Color Lavanda/Azul muy claro
+                doc.rect(0, bannerY, pageWidth, bannerHeight, 'F');
+
+                // Dibuja la línea azul oscuro en la parte inferior del banner (Línea gruesa de énfasis)
+                doc.setDrawColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B);
+                doc.setLineWidth(1.0); // Más grueso para énfasis
+                doc.line(0, bannerY + bannerHeight, pageWidth, bannerY + bannerHeight);
                 
-                // --- Fecha de generación ---
-                doc.setFontSize(10);
+                // Texto del título
+                doc.setFontSize(20);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B);
+                doc.text(titleText, pageWidth / 2, margin + 15, null, null, "center"); 
+                
+                // Fecha de generación (justo debajo del banner)
+                doc.setFontSize(9);
                 doc.setFont("helvetica", "normal");
-                doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`, doc.internal.pageSize.width / 2, margin + 25, null, null, "center");
-                y = margin + 40; 
-
-                // --- Datos del Trabajo ---
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(DARK_BLUE); 
-                doc.text("Datos del Trabajo:", margin, y);
-                y += 8; // Aumento de espacio después del título de sección
+                doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`, pageWidth / 2, margin + 22, null, null, "center");
                 
-                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0); // Vuelve a negro
+                y = margin + 38; // Nuevo Y de inicio después del banner y fecha
+
+                // --- 1. Datos del Trabajo ---
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B); 
+                doc.text("Datos del Trabajo:", margin, y);
+                y += 3; 
+
+                // Línea divisoria de énfasis
+                doc.setDrawColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B);
+                doc.setLineWidth(0.4); 
+                doc.line(margin, y, pageWidth - margin, y);
+                y += 4;
+                
+                doc.setFontSize(10);
                 
                 const col1X = margin;
-                const col2X = doc.internal.pageSize.width / 2 + 5;
-                const labelWidth = 35; // Ancho fijo para las etiquetas
-                const valueOffset = 45; // Distancia desde el margen para los valores (ajustado)
-                const lineHeight = 7; 
+                const col2X = pageWidth / 2 + 5;
+                const valueOffset = 45; 
+                const lineHeight = 6.5; // Ajustado ligeramente para el fondo
                 let currentY = y;
                 
                 headerData.forEach((item, index) => {
-                    if (index % 2 === 0) {
-                        // Primera Columna
-                        doc.setTextColor(DARK_BLUE); 
-                        doc.setFont("helvetica", "bold");
-                        doc.text(`${item.label}:`, col1X, currentY);
-                        doc.setTextColor(0, 0, 0); 
-                        doc.setFont("helvetica", "normal");
-                        doc.text(item.value, col1X + valueOffset, currentY);
-                    } else {
-                        // Segunda Columna
-                        doc.setTextColor(DARK_BLUE); 
-                        doc.setFont("helvetica", "bold");
-                        doc.text(`${item.label}:`, col2X, currentY);
-                        doc.setTextColor(0, 0, 0); 
-                        doc.setFont("helvetica", "normal");
-                        doc.text(item.value, col2X + valueOffset, currentY);
+                    const xStart = (index % 2 === 0) ? col1X : col2X;
+                    
+                    // Fondo sutil para la etiqueta
+                    doc.setFillColor(LIGHT_BLUE_GRAY_R, LIGHT_BLUE_GRAY_G, LIGHT_BLUE_GRAY_B); 
+                    doc.rect(xStart, currentY - 5, valueOffset - 5, lineHeight, 'F'); // Dibuja el fondo de la etiqueta
+
+                    // Etiqueta
+                    doc.setTextColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B); 
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`${item.label}:`, xStart + 2, currentY); // 2mm de padding
+
+                    // Valor
+                    doc.setTextColor(0, 0, 0); 
+                    doc.setFont("helvetica", "normal");
+                    doc.text(item.value, xStart + valueOffset, currentY);
+
+                    if (index % 2 !== 0) {
                         currentY += lineHeight; // Solo avanza la línea al final de la fila
                     }
                 });
                 
-                y = currentY + lineHeight * 2; 
+                y = currentY + lineHeight * 1; // Espacio de separación
 
-                // --- Descripción General ---
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(DARK_BLUE); 
-                doc.text("Detalles del Trabajo (Comentarios):", margin, y);
-                y += 6;
-                doc.setTextColor(0, 0, 0); 
-
+                // --- 2. Descripción General ---
                 doc.setFontSize(12);
-                doc.setFont("helvetica", "normal");
-                const descriptionLines = doc.splitTextToSize(description, 180);
-                doc.text(descriptionLines, margin, y);
-                y += descriptionLines.length * 6;
-                y += 10;
-
-                // --- Fotos ---
-                doc.setFontSize(14);
                 doc.setFont("helvetica", "bold");
-                doc.setTextColor(DARK_BLUE); 
+                doc.setTextColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B); 
+                doc.text("Detalles del Trabajo (Comentarios):", margin, y);
+                y += 3; 
+
+                // Línea divisoria de énfasis
+                doc.setDrawColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B);
+                doc.setLineWidth(0.4); 
+                doc.line(margin, y, pageWidth - margin, y);
+                y += 4;
+                
+                doc.setTextColor(0, 0, 0); 
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                const descriptionLines = doc.splitTextToSize(description, 180); 
+                doc.text(descriptionLines, margin, y);
+                y += descriptionLines.length * 5;
+                y += 6; // Espacio de separación
+
+                // --- 3. Fotos ---
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B); 
                 doc.text("Imágenes Capturadas:", margin, y);
-                y += 8;
+                y += 3;
+
+                // Línea divisoria de énfasis
+                doc.setDrawColor(DARK_BLUE_R, DARK_BLUE_G, DARK_BLUE_B);
+                doc.setLineWidth(0.4); 
+                doc.line(margin, y, pageWidth - margin, y);
+                y += 4;
+                
                 doc.setTextColor(0, 0, 0); 
 
                 const photoWidth = 85;
-                const photoHeight = 85;
+                const photoHeight = 65; 
                 const xOffset = margin;
                 const spacing = 10;
                 let x = xOffset;
                 
                 if (capturedPhotos.length === 0) {
-                     doc.setFontSize(12);
+                     doc.setFontSize(10);
                      doc.setFont("helvetica", "italic");
                      doc.text("No se capturó ninguna fotografía para este informe.", margin, y);
                      y += 10;
@@ -378,40 +421,30 @@
                 photos.forEach((dataUrl, index) => {
                     if (!dataUrl) return; // Saltar slots vacíos
 
-                    // Salto de página si no hay espacio para la foto y el texto
-                    if (y + photoHeight + 10 > pageHeight - margin) {
+                    // Solo añadimos página si la posición actual (y) más la altura de la foto + etiqueta
+                    // es mayor que el límite de la página menos un margen de seguridad (20)
+                    if (y + photoHeight + 10 > pageHeight - 20) {
                         doc.addPage();
                         y = margin; 
                         x = xOffset;
                         addFooter(doc); 
                     }
                     
-                    // Lógica para 2x2: Mover a la siguiente columna
-                    if ((index % 2 === 0) && index > 0) { // Si es la primera foto de una nueva fila
-                        // Chequeo de salto de página antes de dibujar
-                        if (y + photoHeight + 10 > pageHeight - margin) {
-                            doc.addPage();
-                            y = margin; 
-                            x = xOffset;
-                            addFooter(doc); 
-                        }
-                    } else if (index % 2 !== 0) { // Si es la segunda foto de una fila, preparamos la siguiente Y
-                        // La Y avanza solo cuando se pasa a la siguiente fila
-                    }
-
-                    
                     try {
-                        const imageFile = photoFiles[index];
                         const imageType = dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
                         
-                        // Añadimos la imagen con orientación automática si es JPEG
-                        // jsPDF usará 'auto' para intentar corregir la rotación EXIF
+                        // Añadimos la imagen con orientación automática
                         doc.addImage(dataUrl, imageType, x, y, photoWidth, photoHeight, null, 'FAST', 'auto');
                         
+                        // Añadir un borde elegante a la foto (Borde 0.5mm, color gris oscuro)
+                        doc.setDrawColor(50, 50, 50); 
+                        doc.setLineWidth(0.3); 
+                        doc.rect(x, y, photoWidth, photoHeight, 'S'); 
+
                         // Agregar la etiqueta de la foto
-                        doc.setFontSize(10);
+                        doc.setFontSize(9);
                         doc.setFont("helvetica", "normal");
-                        doc.text(`Foto ${index + 1}`, x, y + photoHeight + 4); 
+                        doc.text(`Foto ${index + 1}`, x, y + photoHeight + 3);
 
                     } catch (e) {
                         console.error(`Error al añadir la imagen ${index + 1} al PDF:`, e);
@@ -424,7 +457,7 @@
                         x += photoWidth + spacing; // Mover a la columna 2
                     } else {
                         x = xOffset; // Volver al margen
-                        y += photoHeight + 15; // Mover a la siguiente fila (+ espacio extra)
+                        y += photoHeight + 10; // Mover a la siguiente fila
                     }
                 });
                 
