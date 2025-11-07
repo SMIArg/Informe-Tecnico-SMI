@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informes Fotográficos</title>
+    
+    <!-- Carga de Tailwind CSS para un diseño responsivo y moderno --><script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- LIBRERÍAS NECESARIAS PARA LA GENERACIÓN DE PDF --><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        /* Configuración de la fuente Inter y estilos base */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb; /* Fondo suave */
+            display: flex;
+            justify-content: center;
+            padding: 1rem;
+        }
+        /* Estilo para el contenedor principal en dispositivos pequeños */
+        #app-container {
+            width: 100%;
+            max-width: 640px; /* Ancho máximo para el informe */
+        }
+        /* Estilo para el botón "+" (Mejora estética) */
+        .add-photo-button {
+            transition: all 0.15s ease-in-out;
+            border-radius: 0.75rem;
+        }
+        .add-photo-button:hover {
+            background-color: #e5e7eb;
+        }
+        
+        /* Estilo para el botón de generar PDF */
+        .pdf-button {
+            background-color: #10b981; /* Color verde esmeralda inicial */
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.4);
+            transition: all 0.2s;
+        }
+        .pdf-button:hover {
+            background-color: #059669;
+        }
+        .pdf-button:disabled {
+            background-color: #6b7280; /* Gris cuando está deshabilitado */
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Contenedor Principal de la Aplicación --><div id="app-container" class="bg-white p-6 md:p-8 rounded-xl shadow-2xl space-y-6">
+
+        <h1 class="text-3xl font-bold text-gray-900 text-center">
+            Informes Fotográficos
+        </h1>
+        <p class="text-gray-500 text-center mb-6">
+            Captura hasta 4 imágenes para tu informe.
+        </p>
+
+        <!-- Contenedor para el mensaje de estado (simula un Toast/Alert) --><div id="message-box" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-500 text-white py-2 px-4 rounded-lg shadow-xl opacity-0 transition-opacity duration-300 pointer-events-none">
+            Mensaje de estado.
+        </div>
+        
+        <!-- Input de Archivo Oculto (Se activa al hacer clic en el "+") --><input type="file" id="file-input" accept="image/*" capture="camera" class="hidden">
+
+        <!-- CAMPOS DE IDENTIFICACIÓN DEL INFORME --><div class="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-800 border-b pb-2">Datos del Trabajo</h2>
+            
+            <!-- Campo Empresa --><div>
+                <label for="input-empresa" class="block text-sm font-medium text-gray-700">Empresa:</label>
+                <input type="text" id="input-empresa" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Nombre de la empresa">
+            </div>
+
+            <!-- Campo Equipo --><div>
+                <label for="input-equipo" class="block text-sm font-medium text-gray-700">Equipo:</label>
+                <input type="text" id="input-equipo" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Modelo o tipo de equipo">
+            </div>
+
+            <!-- Campo Orden de Compra --><div>
+                <label for="input-orden-compra" class="block text-sm font-medium text-gray-700">Orden de compra:</label>
+                <input type="text" id="input-orden-compra" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Número de O.C.">
+            </div>
+
+            <!-- Campo Ubicación --><div>
+                <label for="input-ubicacion" class="block text-sm font-medium text-gray-700">Ubicación:</label>
+                <input type="text" id="input-ubicacion" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Lugar o dirección">
+            </div>
+
+            <!-- Campo Precinto de ID --><div>
+                <label for="input-precinto-id" class="block text-sm font-medium text-gray-700">Precinto de ID:</label>
+                <input type="text" id="input-precinto-id" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="ID de precinto">
+            </div>
+        </div>
+        <!-- FIN CAMPOS DE IDENTIFICACIÓN --><!-- CUADRO DE 4 DIVISIONES (Photo Grid) --><div id="photo-grid" class="grid grid-cols-2 gap-3 md:gap-4 pt-4">
+            <!-- Los 4 slots de fotos se renderizarán aquí mediante JavaScript --></div>
+        <!-- FIN CUADRO DE 4 DIVISIONES --><!-- ESPACIO COMÚN DE DESCRIPCIÓN --><div class="space-y-2 pt-4">
+            <label for="report-details" class="block text-lg font-medium text-gray-700">
+                Detalles del Trabajo (Comentarios)
+            </label>
+            <textarea id="report-details" rows="5" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm transition duration-150" placeholder="Escribe aquí la descripción común para las 4 fotos..."></textarea>
+        </div>
+        <!-- FIN ESPACIO COMÚN DE DESCRIPCIÓN --><!-- Botón para generar PDF --><button id="generate-pdf-button" onclick="generatePDFReport()" class="w-full pdf-button text-white py-3 rounded-xl font-semibold transform focus:outline-none focus:ring-4 focus:ring-green-300">
+            Generar Informe (Descargar PDF)
+        </button>
+        
+        <!-- PIE DE PÁGINA DE LA APLICACIÓN (PARA INTERFAZ) --><div class="text-xs text-gray-600 text-center mt-4">
+            Venezuela 4109 – Vicente Lopez – CP: 1603 - Villa Martelli – WWW.SMIARGENTINA.COM.AR
+        </div>
+
+
+    </div>
+
+    <script>
+        // Definir el color azul oscuro personalizado
+        const DARK_BLUE = '#0A1128'; 
+
+        // Inicialización de Variables Globales
+        let photos = new Array(4).fill(null);
+        let currentSlotIndex = -1;
+
+        // Referencias a elementos del DOM
+        const photoGrid = document.getElementById('photo-grid');
+        const fileInput = document.getElementById('file-input');
+        const messageBox = document.getElementById('message-box');
+        const pdfButton = document.getElementById('generate-pdf-button');
+
+        // --- LÓGICA DE UTILIDAD ---
+
+        /**
+         * Muestra un mensaje temporal en pantalla (simulando un Toast/Alert).
+         */
+        function showMessage(message, bgColor = 'bg-green-500') {
+            messageBox.textContent = message;
+            messageBox.classList.remove('bg-green-500', 'bg-red-600', 'bg-blue-600');
+            messageBox.classList.add(bgColor);
+            messageBox.classList.remove('opacity-0', 'pointer-events-none');
+            messageBox.classList.add('opacity-100');
+
+            setTimeout(() => {
+                messageBox.classList.remove('opacity-100');
+                messageBox.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        /**
+         * Agrega el pie de página a la parte inferior de la página actual del PDF.
+         * @param {jsPDF} doc - Instancia de jsPDF.
+         */
+        function addFooter(doc) {
+            const footerText = "Venezuela 4109 – Vicente Lopez – CP: 1603 - Villa Martelli – WWW.SMIARGENTINA.COM.AR";
+            doc.setFontSize(9); // Un poco más grande para el footer
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(DARK_BLUE); // Usa el color azul oscuro
+            doc.text(footerText, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 12, null, null, "center");
+            doc.setTextColor(0, 0, 0); // Vuelve a negro
+        }
+
+        // --- LÓGICA DE LA APLICACIÓN ---
+
+        /**
+         * Renderiza el cuadrante de fotos (el 2x2) basándose en el array `photos`.
+         */
+        function renderPhotos() {
+            photoGrid.innerHTML = '';
+            photos.forEach((photoDataUrl, index) => {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'w-full aspect-square bg-gray-100 border-2 border-dashed border-gray-400 rounded-xl overflow-hidden flex items-center justify-center relative shadow-md';
+
+                if (photoDataUrl) {
+                    slotDiv.innerHTML = `
+                        <img src="${photoDataUrl}" alt="Foto del informe ${index + 1}" class="w-full h-full object-cover">
+                        
+                        <!-- Botón de Eliminar Foto --><button onclick="removePhoto(${index})" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-700 transition duration-150 transform hover:scale-110" aria-label="Eliminar foto ${index + 1}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                                <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.5H2.75a.75.75 0 0 0 0 1.5h.75v8.5A2.75 2.75 0 0 0 16.5 14.25v-8.5h.75a.75.75 0 0 0 0-1.5H14V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5ZM8.75 8A.75.75 0 0 1 9.5 7.25h1A.75.75 0 0 1 11.25 8v6.75a.75.75 0 0 1-1.5 0V8ZM6.25 8A.75.75 0 0 1 7 7.25h1A.75.75 0 0 1 8.75 8v6.75a.75.75 0 0 1-1.5 0V8Z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    `;
+                } else {
+                    slotDiv.innerHTML = `
+                        <button onclick="triggerFileInput(${index})" class="add-photo-button flex flex-col items-center justify-center w-full h-full text-gray-500 hover:text-blue-600 transition duration-150" aria-label="Agregar foto al slot ${index + 1}">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12">
+                                <path fill-rule="evenodd" d="M12 5.25a.75.75 0 0 1 .75.75v5.25H18a.75.75 0 0 1 0 1.5h-5.25V18a.75.75 0 0 1-1.5 0v-5.25H6a.75.75 0 0 1 0-1.5h5.25V6a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="mt-2 text-sm font-medium">Añadir Foto ${index + 1}</span>
+                        </button>
+                    `;
+                }
+                photoGrid.appendChild(slotDiv);
+            });
+        }
+
+        /**
+         * Establece el índice actual y simula el clic en el input de archivo oculto.
+         */
+        function triggerFileInput(index) {
+            currentSlotIndex = index;
+            fileInput.value = ''; 
+            fileInput.click();
+        }
+
+        /**
+         * Maneja el cambio en el input de archivo.
+         */
+        function handleFileChange(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (currentSlotIndex === -1 || currentSlotIndex >= 4) {
+                showMessage('Error: Slot de foto inválido.', 'bg-red-600');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const photoDataUrl = e.target.result;
+                photos[currentSlotIndex] = photoDataUrl;
+                renderPhotos();
+                showMessage(`Foto ${currentSlotIndex + 1} agregada con éxito.`);
+                currentSlotIndex = -1;
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        /**
+         * Elimina una foto del slot especificado.
+         */
+        function removePhoto(index) {
+            photos[index] = null;
+            renderPhotos();
+            showMessage(`Foto ${index + 1} eliminada.`, 'bg-red-600');
+        }
+
+        /**
+         * Genera y descarga el informe en formato PDF.
+         */
+        function generatePDFReport() {
+            pdfButton.disabled = true;
+            pdfButton.textContent = 'Generando PDF...';
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                const headerData = [
+                    { label: "Empresa", value: document.getElementById('input-empresa').value || "N/A" },
+                    { label: "Equipo", value: document.getElementById('input-equipo').value || "N/A" },
+                    { label: "Orden de compra", value: document.getElementById('input-orden-compra').value || "N/A" },
+                    { label: "Ubicación", value: document.getElementById('input-ubicacion').value || "N/A" },
+                    { label: "Precinto de ID", value: document.getElementById('input-precinto-id').value || "N/A" }
+                ];
+
+                const description = document.getElementById('report-details').value || "No se proporcionó ninguna descripción.";
+                const capturedPhotos = photos.filter(p => p !== null);
+                const margin = 15;
+                let y = margin;
+                const pageHeight = doc.internal.pageSize.height;
+
+                // --- Logo SMI (Texto) y Subtítulo ---
+                doc.setTextColor(DARK_BLUE);
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.text("SMI Argentina", margin, y);
+                y += 5; // Espacio entre "SMI Argentina" y "Raising Business"
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "normal");
+                doc.text("Raising Business", margin, y);
+                y += 10; // Espacio después del bloque de logo/subtítulo
+                doc.setTextColor(0, 0, 0); // Vuelve a negro para el resto del documento
+
+                // --- Título del Informe (Cambiado) ---
+                doc.setFontSize(24);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(DARK_BLUE); // Aplica color azul oscuro al título
+                doc.text("INFORME TÉCNICO FOTOGRÁFICO", doc.internal.pageSize.width / 2, margin + 15, null, null, "center"); // Ajusta posición para no chocar con logo de texto
+                doc.setTextColor(0, 0, 0); // Vuelve a negro
+                
+                // --- Fecha de generación ---
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`, doc.internal.pageSize.width / 2, margin + 25, null, null, "center");
+                y = margin + 40; // Ajusta 'y' para comenzar con los datos del trabajo debajo del bloque de título/fecha
+
+                // --- Datos del Trabajo ---
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(DARK_BLUE); // Aplica color azul oscuro
+                doc.text("Datos del Trabajo:", margin, y);
+                y += 6;
+                
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(0, 0, 0); // Vuelve a negro para los valores
+                
+                const col1X = margin;
+                const col2X = doc.internal.pageSize.width / 2 + 5;
+                const lineHeight = 5; 
+                let currentY = y;
+                
+                headerData.forEach((item, index) => {
+                    if (index % 2 === 0) {
+                        doc.setTextColor(DARK_BLUE); // Aplica color azul oscuro a la etiqueta
+                        doc.setFont("helvetica", "bold");
+                        doc.text(`${item.label}:`, col1X, currentY);
+                        doc.setTextColor(0, 0, 0); // Vuelve a negro para el valor
+                        doc.setFont("helvetica", "normal");
+                        doc.text(item.value, col1X + 35, currentY);
+                    } else {
+                        doc.setTextColor(DARK_BLUE); // Aplica color azul oscuro a la etiqueta
+                        doc.setFont("helvetica", "bold");
+                        doc.text(`${item.label}:`, col2X, currentY);
+                        doc.setTextColor(0, 0, 0); // Vuelve a negro para el valor
+                        doc.setFont("helvetica", "normal");
+                        doc.text(item.value, col2X + 35, currentY);
+                        currentY += lineHeight;
+                    }
+                });
+                
+                y = currentY + lineHeight * 2; 
+
+                // --- Descripción General ---
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(DARK_BLUE); // Aplica color azul oscuro
+                doc.text("Detalles del Trabajo (Comentarios):", margin, y);
+                y += 6;
+                doc.setTextColor(0, 0, 0); // Vuelve a negro
+
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                const descriptionLines = doc.splitTextToSize(description, 180);
+                doc.text(descriptionLines, margin, y);
+                y += descriptionLines.length * 6;
+                y += 10;
+
+                // --- Fotos ---
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(DARK_BLUE); // Aplica color azul oscuro
+                doc.text("Imágenes Capturadas:", margin, y);
+                y += 8;
+                doc.setTextColor(0, 0, 0); // Vuelve a negro
+
+                const photoWidth = 85;
+                const photoHeight = 85;
+                const xOffset = margin;
+                const spacing = 10;
+                let x = xOffset;
+                
+                if (capturedPhotos.length === 0) {
+                     doc.setFontSize(12);
+                     doc.setFont("helvetica", "italic");
+                     doc.text("No se capturó ninguna fotografía para este informe.", margin, y);
+                     y += 10;
+                }
+                
+                addFooter(doc); // Footer en la primera página
+
+                capturedPhotos.forEach((dataUrl, index) => {
+                    // Salto de página si no hay espacio para la foto y el texto (10mm de altura extra)
+                    if (y + photoHeight + 10 > pageHeight - margin) {
+                        doc.addPage();
+                        y = margin; 
+                        x = xOffset;
+                        addFooter(doc); // Agregar footer a la nueva página
+                    }
+                    
+                    // Lógica para 2x2: Mover a la siguiente columna
+                    if (index > 0 && index % 2 === 0) { 
+                        y += photoHeight + 10;
+                        x = xOffset;
+                        
+                        // Doble chequeo para salto de página en inicio de fila
+                        if (y + photoHeight + 10 > pageHeight - margin) {
+                            doc.addPage();
+                            y = margin; 
+                            x = xOffset;
+                            addFooter(doc); 
+                        }
+                    }
+                    
+                    try {
+                        doc.addImage(dataUrl, 'JPEG', x, y, photoWidth, photoHeight, null, 'FAST');
+                        
+                        // Agregar la etiqueta de la foto
+                        doc.setFontSize(10);
+                        doc.setFont("helvetica", "normal");
+                        doc.text(`Foto ${index + 1}`, x, y + photoHeight + 4); 
+
+                    } catch (e) {
+                        console.error(`Error al añadir la imagen ${index + 1} al PDF:`, e);
+                        doc.setFontSize(10);
+                        doc.text(`[Error: Imagen ${index + 1} no pudo cargarse en PDF]`, x, y + photoHeight / 2);
+                    }
+
+                    // Mover a la siguiente columna
+                    x += photoWidth + spacing;
+                });
+                
+                doc.save(`informe_fotografico_${new Date().toISOString().slice(0, 10)}.pdf`);
+                showMessage("PDF generado y se inició la descarga.", 'bg-green-600');
+
+            } catch (error) {
+                console.error("Error fatal al generar el PDF:", error);
+                showMessage("ERROR al generar PDF. Verifique la consola o intente con imágenes más pequeñas.", 'bg-red-600');
+            } finally {
+                pdfButton.disabled = false;
+                pdfButton.textContent = 'Generar Informe (Descargar PDF)';
+            }
+        }
+
+
+        // --- CONFIGURACIÓN DE EVENT LISTENERS Y ARRANQUE ---
+        
+        fileInput.addEventListener('change', handleFileChange);
+
+        window.onload = () => {
+            renderPhotos();
+            console.log("Aplicación 'Informes Fotográficos' iniciada.");
+            showMessage("Aplicación lista. Toca un '+' para empezar.", 'bg-blue-500');
+        };
+
+    </script>
+
+</body>
+</html>
