@@ -3,980 +3,624 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMI ARGENTINA DATA</title>
-    <!-- Tailwind CSS CDN -->
+    <title>SMI ARGENTINA DATA - Dashboard</title>
+    <!-- Carga de Tailwind CSS para el estilo -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons CDN -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Íconos de Lucide -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
-        /* Estilo base para el scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        /* Track (fondo del scrollbar) */
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9; /* Slate-100 */
-        }
-        /* Handle (la barra que se mueve) */
-        ::-webkit-scrollbar-thumb {
-            background: #94a3b8; /* Slate-400 */
-            border-radius: 4px;
-        }
-        /* Handle on hover */
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64748b; /* Slate-500 */
-        }
-        /* Clase para ocultar el scrollbar si es necesario (ej: en el sidebar) */
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        /* Estilos personalizados para el sidebar */
-        .sidebar-item {
-            display: flex;
-            align-items: center;
-            padding: 1rem 1.5rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            border-radius: 0.5rem;
-            margin: 0.25rem 0;
-            user-select: none;
-        }
-
-        .sidebar-item:hover {
-            background-color: #3b82f6; /* Blue-500 */
-            color: white;
-        }
-
-        .sidebar-item.active {
-            background-color: #1d4ed8; /* Blue-700 */
-            color: white;
-            font-weight: 600;
-        }
-        
-        /* Aseguramos que los íconos se rendericen correctamente */
-        .lucide {
-            width: 1.25rem;
-            height: 1.25rem;
-            margin-right: 0.75rem;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        /* Estilos específicos para la barra lateral y el contenido principal */
+        .sidebar { min-height: 100vh; background-color: #1e3a8a; } /* Azul oscuro */
+        .active-link { background-color: #3b82f6; color: white; border-radius: 0.5rem; }
+        .data-card { transition: all 0.3s ease; }
+        .data-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); }
+        .btn-primary { transition: background-color 0.3s; }
+        .btn-primary:hover { background-color: #1d4ed8; }
+        .modal-bg { background-color: rgba(0, 0, 0, 0.5); }
     </style>
 </head>
-<body class="bg-gray-50 h-screen w-screen overflow-hidden flex flex-col md:flex-row">
+<body>
 
-    <!-- Firebase SDK Imports -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // --- Variables de Entorno y Configuración de Firebase ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-smi-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        let app;
-        let db;
-        let auth;
-        let currentUserId = null;
-        let isAuthReady = false;
+<div id="app" class="flex">
+    <!-- BARRA LATERAL (Sidebar) -->
+    <div class="sidebar w-64 p-5 flex flex-col justify-between text-white shadow-xl">
+        <div>
+            <h1 class="text-2xl font-bold mb-10 text-center tracking-wider">SMI ARGENTINA DATA</h1>
+            <nav>
+                <button onclick="navigate('general')" class="nav-link w-full flex items-center p-3 text-sm font-medium rounded-lg mb-2 transition duration-150 ease-in-out hover:bg-blue-500">
+                    <span data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></span>
+                    Resumen General
+                </button>
+                <button onclick="navigate('clientes')" class="nav-link w-full flex items-center p-3 text-sm font-medium rounded-lg mb-2 transition duration-150 ease-in-out hover:bg-blue-500">
+                    <span data-lucide="users" class="w-5 h-5 mr-3"></span>
+                    Clientes
+                </button>
+                <button onclick="navigate('documentos')" class="nav-link w-full flex items-center p-3 text-sm font-medium rounded-lg mb-2 transition duration-150 ease-in-out hover:bg-blue-500">
+                    <span data-lucide="file-text" class="w-5 h-5 mr-3"></span>
+                    Documentos y Vencimientos
+                </button>
+                <button onclick="navigate('servicios')" class="nav-link w-full flex items-center p-3 text-sm font-medium rounded-lg mb-2 transition duration-150 ease-in-out hover:bg-blue-500">
+                    <span data-lucide="calendar-check" class="w-5 h-5 mr-3"></span>
+                    Seguimiento de Servicios
+                </button>
+            </nav>
+        </div>
+        <div class="text-xs text-gray-400 p-2 border-t border-gray-700 mt-4">
+            <p>Automatización de Gestión Empresarial</p>
+            <p>ID de Sesión: <span id="session-id">Cargando...</span></p>
+        </div>
+    </div>
 
-        setLogLevel('Debug');
-        
-        // --- Inicialización y Conexión a DB ---
-        if (Object.keys(firebaseConfig).length > 0) {
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-            } catch (error) {
-                console.error("Error al inicializar Firebase:", error);
-                document.getElementById('content').innerHTML = `<div class="p-8 text-center text-red-600 bg-red-100 rounded-lg"><p class="font-bold">Error de Conexión a Base de Datos</p><p>No se pudo conectar a Firebase. El programa funcionará sin guardar datos.</p></div>`;
-            }
-        } else {
-             document.getElementById('content').innerHTML = `<div class="p-8 text-center text-red-600 bg-red-100 rounded-lg"><p class="font-bold">Error de Configuración</p><p>La configuración de Firebase no está disponible. El programa funcionará sin guardar datos.</p></div>`;
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div id="loading-indicator" class="hidden fixed inset-0 flex items-center justify-center bg-gray-200 bg-opacity-75 z-50">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
+            <p class="ml-4 text-lg font-semibold text-blue-700">Cargando...</p>
+        </div>
+        <div id="alert-container" class="fixed top-5 right-5 w-80 z-50"></div>
+
+        <div id="content-area">
+            <!-- Las vistas se inyectarán aquí -->
+        </div>
+    </main>
+</div>
+
+<!-- MODAL PARA AGREGAR CLIENTE -->
+<div id="modal-cliente" class="modal-bg fixed inset-0 hidden items-center justify-center z-40">
+    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md">
+        <h2 class="text-xl font-bold mb-4">Agregar Nuevo Cliente</h2>
+        <form id="form-cliente">
+            <div class="mb-4">
+                <label for="cliente-nombre" class="block text-sm font-medium text-gray-700">Nombre o Razón Social</label>
+                <input type="text" id="cliente-nombre" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="cliente-cuit" class="block text-sm font-medium text-gray-700">CUIT/Identificación</label>
+                <input type="text" id="cliente-cuit" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="cliente-direccion" class="block text-sm font-medium text-gray-700">Dirección</label>
+                <input type="text" id="cliente-direccion" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-6">
+                <label for="cliente-telefono" class="block text-sm font-medium text-gray-700">Teléfono</label>
+                <input type="tel" id="cliente-telefono" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeModal('modal-cliente')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancelar</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white btn-primary rounded-lg">Guardar Cliente</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script type="module">
+    // =================================================================================
+    // MIGRACIÓN A SUPABASE - PASO 2: CONEXIÓN
+    //
+    // ¡¡¡ ATENCIÓN !!!
+    // DEBES REEMPLAZAR ESTAS DOS VARIABLES CON TUS CREDENCIALES REALES DE SUPABASE
+    // (Settings > API en tu Dashboard de Supabase)
+    // =================================================================================
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    // 🚨 REEMPLAZA ESTO 🚨
+    const SUPABASE_URL = 'TU_URL_DE_PROYECTO_SUPABASE'; // Ejemplo: 'https://abcdefg1234.supabase.co'
+    const SUPABASE_ANON_KEY = 'TU_CLAVE_PUBLICA_ANON_SUPABASE'; // Ejemplo: 'eyJhbGciOiJIUzI1NiIsInR5c...'
+
+    // Inicializar el cliente
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Variables de estado global
+    let currentView = 'general';
+    let db = supabase; // Alias para compatibilidad
+    let userId = 'SMI-USER-PUBLIC-SESSION'; 
+    window.clientes = [];
+    window.documentos = [];
+    window.servicios = [];
+    let isInitialized = false;
+
+    // =================================================================================
+    // FUNCIONES DE UTILIDAD Y UI (Interacción)
+    // =================================================================================
+
+    function mostrarCargando(isVisible) {
+        const indicator = document.getElementById('loading-indicator');
+        if (indicator) {
+            indicator.classList.toggle('hidden', !isVisible);
+        }
+    }
+
+    function mostrarAlerta(message, type = 'success') {
+        const container = document.getElementById('alert-container');
+        if (!container) return;
+
+        const baseClasses = 'p-4 mb-3 rounded-lg shadow-lg font-semibold';
+        let typeClasses = '';
+
+        if (type === 'success') {
+            typeClasses = 'bg-green-100 text-green-700 border border-green-400';
+        } else if (type === 'error') {
+            typeClasses = 'bg-red-100 text-red-700 border border-red-400';
+        } else if (type === 'info') {
+            typeClasses = 'bg-blue-100 text-blue-700 border border-blue-400';
         }
 
-        window.db = db;
-        window.auth = auth;
-        window.appId = appId;
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `${baseClasses} ${typeClasses}`;
+        alertDiv.textContent = message;
 
-        // --- Manejo de Autenticación (CRÍTICO PARA LA CARGA) ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUserId = user.uid;
-            } else if (auth) {
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    currentUserId = auth.currentUser?.uid || crypto.randomUUID();
-                } catch (error) {
-                    console.error("Error en la autenticación:", error);
-                    currentUserId = crypto.randomUUID();
-                }
-            } else {
-                currentUserId = crypto.randomUUID();
-            }
-            isAuthReady = true;
-            document.getElementById('user-id-display').textContent = currentUserId;
-            console.log("Auth Ready. User ID:", currentUserId);
+        container.appendChild(alertDiv);
 
-            // Una vez que la autenticación está lista, iniciamos la carga de datos
-            if (db) {
-                window.loadData();
-            } else {
-                // Si DB no está inicializada (modo simulación), aún así renderizamos la vista.
-                window.navigateTo('overview');
-            }
-        });
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
 
-        // ----------------------------------------------------
-        // 2. Variables y Funciones de Utilidad
-        // ----------------------------------------------------
-        
-        let clients = [];
-        let documents = [];
-        let trackingRecords = [];
-        
-        const PUBLIC_PATH = `artifacts/${appId}/public/data`;
-        // Definición de colecciones
-        let COLLECTION_CLIENTS, COLLECTION_DOCUMENTS, COLLECTION_TRACKING;
-        if (db) {
-            COLLECTION_CLIENTS = collection(db, `${PUBLIC_PATH}/clients`);
-            COLLECTION_DOCUMENTS = collection(db, `${PUBLIC_PATH}/documents`);
-            COLLECTION_TRACKING = collection(db, `${PUBLIC_PATH}/tracking`);
-        }
+    function openModal(id) {
+        document.getElementById(id)?.classList.remove('hidden');
+        document.getElementById(id)?.classList.add('flex');
+    }
 
+    function closeModal(id) {
+        document.getElementById(id)?.classList.add('hidden');
+        document.getElementById(id)?.classList.remove('flex');
+    }
 
-        /**
-         * Muestra un mensaje temporal en la interfaz.
-         */
-        function showMessage(message, type = 'success') {
-            const container = document.getElementById('message-container');
-            const color = type === 'success' ? 'bg-green-500' : 'bg-red-500';
-            const iconName = type === 'success' ? 'check-circle' : 'x-circle';
+    // =================================================================================
+    // MIGRACIÓN A SUPABASE - PASO 3: LÓGICA DE DATOS
+    // =================================================================================
+
+    // Función genérica para obtener la colección (adaptada a Supabase)
+    function getCollection(tableName) {
+        return supabase.from(tableName);
+    }
+    
+    // =========================================================
+    // CRUD: CLIENTES
+    // =========================================================
+
+    /**
+     * Reemplaza addDoc (Firebase) con insert (Supabase)
+     */
+    async function saveCliente(clienteData) {
+        mostrarCargando(true);
+        try {
+            const { error } = await getCollection('clientes').insert([clienteData]);
             
-            container.innerHTML = `
-                <div class="flex items-center p-3 text-white rounded-lg shadow-lg ${color} mb-4">
-                    <i data-lucide="${iconName}" class="lucide"></i>
-                    <span class="ml-2">${message}</span>
-                </div>
-            `;
-            lucide.createIcons();
-
-            container.classList.remove('hidden');
-            setTimeout(() => {
-                container.classList.add('hidden');
-            }, 5000);
-        }
-
-        /**
-         * Calcula la fecha de vencimiento o próxima inspección.
-         */
-        function calculateDueDate(startDate, months) {
-            const date = new Date(startDate);
-            date.setMonth(date.getMonth() + months);
-            return date;
-        }
-
-        /**
-         * Determina el estado de un registro de seguimiento o documento.
-         */
-        function checkStatus(dueDate) {
-            const today = new Date();
-            const due = new Date(dueDate);
-            // Si el objeto Date es inválido (ej: viene de un string vacío), se trata como Al Día
-            if (isNaN(due)) return { status: 'Al Día', color: 'bg-gray-400' };
-
-            const diffTime = due.getTime() - today.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays < 0) {
-                return { status: 'Vencido', color: 'bg-red-500' };
-            } else if (diffDays <= 60) { // Próximo a vencer (60 días)
-                return { status: 'Próximo a Vencer', color: 'bg-yellow-500' };
-            } else {
-                return { status: 'Al Día', color: 'bg-green-500' };
+            if (error) {
+                console.error('Error Supabase al guardar cliente:', error);
+                mostrarAlerta(`Error al guardar cliente: ${error.message}`, 'error');
+                return false;
             }
+            mostrarAlerta('Cliente guardado exitosamente.', 'success');
+            closeModal('modal-cliente');
+            return true;
+        } catch (e) {
+            console.error('Error de red/conexión al guardar cliente:', e);
+            mostrarAlerta('Error de conexión al guardar cliente.', 'error');
+            return false;
+        } finally {
+            mostrarCargando(false);
         }
+    }
+    
+    /**
+     * Reemplaza onSnapshot (Firebase) con select + realtime (Supabase)
+     */
+    function startClientesListener() {
+        const fetchClientes = async () => {
+            const { data, error } = await getCollection('clientes')
+                .select('*')
+                .order('nombre', { ascending: true });
 
-        window.calculateDueDate = calculateDueDate;
-        window.checkStatus = checkStatus;
-        window.showMessage = showMessage;
-        window.clients = clients;
-        window.documents = documents;
-        window.trackingRecords = trackingRecords;
-        window.currentUserId = currentUserId;
-
-        // ----------------------------------------------------
-        // 3. Funciones CRUD y Listeners
-        // ----------------------------------------------------
-
-        /**
-         * Carga todos los datos de Firestore y establece listeners en tiempo real.
-         */
-        window.loadData = function() {
-            if (!db || !isAuthReady) return;
-
-            // Listener para Clientes
-            onSnapshot(COLLECTION_CLIENTS, (snapshot) => {
-                clients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                console.log("Clientes cargados:", clients.length);
-                if (currentView === 'clients') window.renderClients();
-                window.renderOverview();
-                // Actualizar selects de clientes en las otras vistas
-                populateClientSelect('docClient');
-                populateClientSelect('trackingClient');
-            }, (error) => {
-                console.error("Error al escuchar Clientes:", error);
-            });
-
-            // Listener para Documentos
-            onSnapshot(COLLECTION_DOCUMENTS, (snapshot) => {
-                documents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                documents.forEach(doc => {
-                    if (doc.expirationDate) {
-                        // Manejo de Firestore Timestamp
-                        const dueDate = doc.expirationDate.toDate ? doc.expirationDate.toDate() : new Date(doc.expirationDate);
-                        const statusCheck = checkStatus(dueDate);
-                        doc.status = statusCheck.status;
-                        doc.statusColor = statusCheck.color;
-                        doc.dueDateStr = dueDate.toLocaleDateString('es-AR');
-                    }
-                });
-                console.log("Documentos cargados:", documents.length);
-                if (currentView === 'documents') window.renderDocuments();
-                window.renderOverview();
-            }, (error) => {
-                console.error("Error al escuchar Documentos:", error);
-            });
-
-            // Listener para Seguimiento
-            onSnapshot(COLLECTION_TRACKING, (snapshot) => {
-                trackingRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                trackingRecords.forEach(rec => {
-                    // Manejo de Firestore Timestamp
-                    const lastDate = rec.lastDate.toDate ? rec.lastDate.toDate() : new Date(rec.lastDate);
-                    const frequency = rec.frequencyMonths || 12; // Default a 12 por seguridad
-                    const nextDueDate = calculateDueDate(lastDate, frequency);
-                    rec.nextDueDate = nextDueDate;
-                    rec.nextDueDateStr = nextDueDate.toLocaleDateString('es-AR');
-                    rec.lastDateStr = lastDate.toLocaleDateString('es-AR');
-                    rec.frequencyMonths = frequency;
-                    
-                    const statusCheck = checkStatus(nextDueDate);
-                    rec.status = statusCheck.status;
-                    rec.statusColor = statusCheck.color;
-                });
-                console.log("Seguimiento cargado:", trackingRecords.length);
-                if (currentView === 'tracking') window.renderTracking();
-                window.renderOverview();
-            }, (error) => {
-                console.error("Error al escuchar Seguimiento:", error);
-            });
-            
-            // Inicializar la vista principal después de configurar listeners
-            window.navigateTo('overview');
-        };
-
-        // ----------------------------------------------------
-        // 4. Lógica del Módulo Clientes
-        // ----------------------------------------------------
-
-        window.addClient = async function(event) {
-            event.preventDefault();
-            if (!db) { showMessage("Modo simulación: No se puede guardar sin DB.", 'error'); return; }
-            const form = event.target;
-            const name = form.clientName.value.trim();
-            const contact = form.clientContact.value.trim();
-            const address = form.clientAddress.value.trim();
-
-            if (!name) { showMessage("El nombre del cliente es obligatorio.", 'error'); return; }
-
-            const newClient = { name, contact, address, createdAt: serverTimestamp() };
-
-            try {
-                await addDoc(COLLECTION_CLIENTS, newClient);
-                form.reset();
-                showMessage(`Cliente "${name}" agregado con éxito.`);
-            } catch (e) {
-                showMessage("Error al agregar cliente: " + e.message, 'error');
-            }
-        }
-
-        window.renderClients = function() {
-            const tableBody = document.getElementById('clients-table-body');
-            if (!tableBody) return;
-            
-            // Si la lista está vacía, mostrar mensaje
-            if (clients.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-500">No hay clientes registrados.</td></tr>`;
-                 lucide.createIcons();
-                 return;
-            }
-
-            tableBody.innerHTML = clients.map(client => `
-                <tr class="border-b hover:bg-gray-100">
-                    <td class="px-6 py-4 font-medium text-gray-900">${client.name}</td>
-                    <td class="px-6 py-4">${client.contact || '-'}</td>
-                    <td class="px-6 py-4">${client.address || '-'}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="deleteClient('${client.id}', '${client.name}')" class="text-red-600 hover:text-red-900 transition duration-150" title="Eliminar Cliente">
-                            <i data-lucide="trash-2" class="lucide w-5 h-5"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-            lucide.createIcons();
-        }
-
-        window.deleteClient = async function(id, name) {
-            if (!db) { showMessage("Modo simulación: No se puede eliminar sin DB.", 'error'); return; }
-            if (!confirm(`¿Estás seguro de eliminar al cliente "${name}"? Esto eliminará también sus documentos y seguimientos asociados.`)) return;
-
-            try {
-                // Eliminar el cliente
-                await deleteDoc(doc(db, `${PUBLIC_PATH}/clients`, id));
-                
-                // Limpieza de dependencias (simplificada)
-                // Usamos la lista de datos actual para encontrar las dependencias
-                const docsToDelete = documents.filter(d => d.clientId === id);
-                for (const d of docsToDelete) {
-                    // Borrado directo (sin esperar el onSnapshot para ser rápido, pero el listener lo corregirá)
-                    await deleteDoc(doc(db, `${PUBLIC_PATH}/documents`, d.id));
-                }
-                const trackingToDelete = trackingRecords.filter(t => t.clientId === id);
-                for (const t of trackingToDelete) {
-                    await deleteDoc(doc(db, `${PUBLIC_PATH}/tracking`, t.id));
-                }
-
-                showMessage(`Cliente "${name}" y sus registros asociados eliminados.`);
-            } catch (e) {
-                showMessage("Error al eliminar cliente: " + e.message, 'error');
-            }
-        }
-
-
-        // ----------------------------------------------------
-        // 5. Lógica del Módulo Documentos
-        // ----------------------------------------------------
-
-        window.addDocument = async function(event) {
-            event.preventDefault();
-            if (!db) { showMessage("Modo simulación: No se puede guardar sin DB.", 'error'); return; }
-            const form = event.target;
-            const clientId = form.docClient.value;
-            const name = form.docName.value.trim();
-            const type = form.docType.value;
-            const expirationDateStr = form.docExpirationDate.value;
-            
-            if (!clientId || !name || !expirationDateStr) { showMessage("Cliente, Nombre y Fecha de Vencimiento son obligatorios.", 'error'); return; }
-
-            // Simulación de URL del archivo
-            const fileUrl = `simulacion/archivo/${name.replace(/\s/g, '_')}_${Date.now()}.pdf`;
-            const expirationDate = new Date(expirationDateStr);
-
-            const newDocument = { clientId, name, type, expirationDate, fileUrl, uploadedAt: serverTimestamp() };
-
-            try {
-                await addDoc(COLLECTION_DOCUMENTS, newDocument);
-                form.reset();
-                showMessage(`Documento "${name}" adjuntado con éxito.`);
-            } catch (e) {
-                showMessage("Error al adjuntar documento: " + e.message, 'error');
-            }
-        }
-
-        window.renderDocuments = function() {
-            const tableBody = document.getElementById('documents-table-body');
-            if (!tableBody) return;
-            
-            if (documents.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500">No hay documentos registrados.</td></tr>`;
-                 lucide.createIcons();
-                 return;
-            }
-
-            // Ordenar por estado (Vencido: 1, Próximo: 2, Al Día: 3) y luego por fecha
-            const sortedDocs = documents.sort((a, b) => {
-                const statusOrder = { 'Vencido': 1, 'Próximo a Vencer': 2, 'Al Día': 3 };
-                const dateA = new Date(a.expirationDate.toDate ? a.expirationDate.toDate() : a.expirationDate);
-                const dateB = new Date(b.expirationDate.toDate ? b.expirationDate.toDate() : b.expirationDate);
-
-                if (statusOrder[a.status] !== statusOrder[b.status]) {
-                    return statusOrder[a.status] - statusOrder[b.status];
-                }
-                return dateA - dateB;
-            });
-
-            tableBody.innerHTML = sortedDocs.map(doc => {
-                const clientName = clients.find(c => c.id === doc.clientId)?.name || 'Cliente Desconocido';
-                return `
-                    <tr class="border-b hover:bg-gray-100">
-                        <td class="px-6 py-4 font-medium text-gray-900">${doc.name}</td>
-                        <td class="px-6 py-4">${clientName}</td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full text-white ${doc.statusColor}">
-                                ${doc.status}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4">${doc.dueDateStr}</td>
-                        <td class="px-6 py-4 text-right flex justify-end space-x-2">
-                            <button onclick="downloadFile('${doc.fileUrl}', '${doc.name}')" class="text-blue-600 hover:text-blue-900 transition duration-150" title="Descargar (Simulado)">
-                                <i data-lucide="download" class="lucide w-5 h-5"></i>
-                            </button>
-                            <button onclick="deleteDocument('${doc.id}', '${doc.name}')" class="text-red-600 hover:text-red-900 transition duration-150" title="Eliminar">
-                                <i data-lucide="trash-2" class="lucide w-5 h-5"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            lucide.createIcons();
-        }
-
-        window.deleteDocument = async function(id, name) {
-            if (!db) { showMessage("Modo simulación: No se puede eliminar sin DB.", 'error'); return; }
-            if (!confirm(`¿Estás seguro de eliminar el documento "${name}"?`)) return;
-
-            try {
-                await deleteDoc(doc(db, `${PUBLIC_PATH}/documents`, id));
-                showMessage(`Documento "${name}" eliminado.`);
-            } catch (e) {
-                showMessage("Error al eliminar documento: " + e.message, 'error');
-            }
-        }
-
-        window.downloadFile = function(url, name) {
-            // Simulación de descarga
-            showMessage(`Simulando descarga de: ${name}. En un sistema real, el navegador abriría ${url}`, 'success');
-        }
-
-        // ----------------------------------------------------
-        // 6. Lógica del Módulo Seguimiento
-        // ----------------------------------------------------
-
-        window.addTracking = async function(event) {
-            event.preventDefault();
-            if (!db) { showMessage("Modo simulación: No se puede guardar sin DB.", 'error'); return; }
-            const form = event.target;
-            const clientId = form.trackingClient.value;
-            const type = form.trackingType.value;
-            const lastDateStr = form.trackingLastDate.value;
-            let frequencyMonths;
-
-            if (type === 'Certificacion') {
-                frequencyMonths = 12;
-            } else {
-                frequencyMonths = parseInt(form.trackingFrequency.value);
-            }
-
-            if (!clientId || !type || !lastDateStr || !frequencyMonths) {
-                showMessage("Cliente, Tipo, Última Fecha y Frecuencia son obligatorios.", 'error');
+            if (error) {
+                console.error("Error al cargar clientes:", error);
+                mostrarAlerta('No se pudieron cargar los clientes.', 'error');
                 return;
             }
 
-            const lastDate = new Date(lastDateStr);
-
-            const newTracking = {
-                clientId,
-                type,
-                frequencyMonths,
-                lastDate,
-                createdAt: serverTimestamp()
-            };
-
-            try {
-                // Al agregar, el listener onSnapshot calculará la próxima fecha
-                await addDoc(COLLECTION_TRACKING, newTracking);
-                form.reset();
-                showMessage(`Seguimiento de ${type} creado con éxito.`);
-            } catch (e) {
-                showMessage("Error al crear seguimiento: " + e.message, 'error');
+            window.clientes = data;
+            // Solo renderiza si el usuario está en la vista de clientes
+            if (currentView === 'clientes') {
+                renderClientesList(data);
             }
-        }
+        };
 
-        window.renderTracking = function() {
-            const tableBody = document.getElementById('tracking-table-body');
-            if (!tableBody) return;
+        // Llama a la función de carga inicial
+        fetchClientes();
 
-            if (trackingRecords.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">No hay seguimientos registrados.</td></tr>`;
-                 lucide.createIcons();
-                 return;
-            }
-
-            // Ordenar por estado (Vencido, Próximo, Al Día) y luego por próxima fecha
-            const sortedTracking = trackingRecords.sort((a, b) => {
-                const statusOrder = { 'Vencido': 1, 'Próximo a Vencer': 2, 'Al Día': 3 };
-                if (statusOrder[a.status] !== statusOrder[b.status]) {
-                    return statusOrder[a.status] - statusOrder[b.status];
+        // Configura el canal de escucha en tiempo real
+        supabase
+            .channel('clientes_realtime')
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'clientes' },
+                () => {
+                    console.log('Cambio detectado en clientes. Refrescando lista...');
+                    fetchClientes(); 
                 }
-                return a.nextDueDate - b.nextDueDate;
-            });
-
-            tableBody.innerHTML = sortedTracking.map(rec => {
-                const clientName = clients.find(c => c.id === rec.clientId)?.name || 'Cliente Desconocido';
-                return `
-                    <tr class="border-b hover:bg-gray-100">
-                        <td class="px-6 py-4 font-medium text-gray-900">${clientName}</td>
-                        <td class="px-6 py-4">${rec.type}</td>
-                        <td class="px-6 py-4">${rec.lastDateStr}</td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full text-white ${rec.statusColor}">
-                                ${rec.status}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4">${rec.nextDueDateStr}</td>
-                        <td class="px-6 py-4">${rec.frequencyMonths} meses</td>
-                        <td class="px-6 py-4 text-right">
-                            <button onclick="completeTracking('${rec.id}', '${rec.type}', ${rec.frequencyMonths})" class="text-green-600 hover:text-green-900 transition duration-150" title="Marcar como Completo (Actualizar Fecha)">
-                                <i data-lucide="rotate-cw" class="lucide w-5 h-5"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            lucide.createIcons();
-        }
-
-        window.updateTrackingFrequencyOptions = function() {
-            const type = document.getElementById('trackingType').value;
-            const frequencyDiv = document.getElementById('trackingFrequencyDiv');
-            const frequencySelect = document.getElementById('trackingFrequency');
-
-            if (type === 'Certificacion') {
-                frequencySelect.innerHTML = '<option value="12" selected>12 meses (Anual)</option>';
-                frequencyDiv.classList.add('opacity-50', 'pointer-events-none');
-                frequencySelect.removeAttribute('required'); // Opcional, ya que es fijo
-            } else {
-                frequencySelect.innerHTML = `
-                    <option value="">Seleccione Frecuencia</option>
-                    <option value="3">3 meses</option>
-                    <option value="6">6 meses</option>
-                    <option value="12">12 meses</option>
-                `;
-                frequencyDiv.classList.remove('opacity-50', 'pointer-events-none');
-                frequencySelect.setAttribute('required', 'required');
-            }
-        }
-
-        window.completeTracking = async function(id, type, frequencyMonths) {
-            if (!db) { showMessage("Modo simulación: No se puede actualizar sin DB.", 'error'); return; }
-            const today = new Date();
-            const nextDueDate = calculateDueDate(today, frequencyMonths);
-            
-            if (!confirm(`¿Marcar ${type} como completado hoy? La próxima fecha de vencimiento será: ${nextDueDate.toLocaleDateString('es-AR')}`)) return;
-
-            try {
-                const recordRef = doc(db, `${PUBLIC_PATH}/tracking`, id);
-                await updateDoc(recordRef, {
-                    lastDate: today,
-                });
-                showMessage(`Servicio de ${type} completado. Seguimiento actualizado.`);
-            } catch (e) {
-                showMessage("Error al actualizar seguimiento: " + e.message, 'error');
-            }
-        }
-
-        // ----------------------------------------------------
-        // 7. Lógica del Módulo Resumen
-        // ----------------------------------------------------
-
-        window.renderOverview = function() {
-            if (currentView !== 'overview') return;
-            const container = document.getElementById('overview-content');
-            if (!container) return;
-            
-            const totalClients = clients.length;
-            
-            // Documentos
-            const expiredDocs = documents.filter(d => d.status === 'Vencido').length;
-            const upcomingDocs = documents.filter(d => d.status === 'Próximo a Vencer').length;
-            
-            // Seguimiento
-            const expiredTracking = trackingRecords.filter(t => t.status === 'Vencido').length;
-            const upcomingTracking = trackingRecords.filter(t => t.status === 'Próximo a Vencer').length;
-            
-            const totalServices = trackingRecords.length;
-
-            container.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    <!-- Tarjeta de Clientes -->
-                    <div class="p-6 bg-white rounded-xl shadow-lg border-l-4 border-blue-500">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-500">Clientes Registrados</p>
-                            <i data-lucide="users" class="lucide text-blue-500 w-6 h-6"></i>
-                        </div>
-                        <p class="text-3xl font-extrabold text-gray-900 mt-1">${totalClients}</p>
-                        <p class="text-xs text-gray-400 mt-2">Total de empresas bajo tu gestión.</p>
-                    </div>
-
-                    <!-- Tarjeta de Documentos Vencidos -->
-                    <div class="p-6 bg-white rounded-xl shadow-lg border-l-4 border-red-500">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-500">Documentos Vencidos</p>
-                            <i data-lucide="file-x" class="lucide text-red-500 w-6 h-6"></i>
-                        </div>
-                        <p class="text-3xl font-extrabold text-gray-900 mt-1 ${expiredDocs > 0 ? 'text-red-500' : 'text-gray-900'}">${expiredDocs}</p>
-                        <p class="text-xs text-gray-400 mt-2">Documentos Fiscales/Clientes que caducaron.</p>
-                    </div>
-
-                    <!-- Tarjeta de Próximo Servicio -->
-                    <div class="p-6 bg-white rounded-xl shadow-lg border-l-4 border-yellow-500">
-                        <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-500">Servicios (M/I/C) Próximos</p>
-                            <i data-lucide="calendar-check" class="lucide text-yellow-500 w-6 h-6"></i>
-                        </div>
-                        <p class="text-3xl font-extrabold text-gray-900 mt-1 ${upcomingTracking > 0 ? 'text-yellow-500' : 'text-gray-900'}">${upcomingTracking}</p>
-                        <p class="text-xs text-gray-400 mt-2">Mantenimientos/Inspecciones a realizar en 60 días.</p>
-                    </div>
-                </div>
-
-                <h3 class="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2">Registros Críticos</h3>
-                
-                ${expiredDocs > 0 || expiredTracking > 0 ? `
-                <div class="bg-red-50 p-6 rounded-xl shadow-inner border border-red-200 mb-6">
-                    <h4 class="text-xl font-bold text-red-700 mb-3 flex items-center">
-                        <i data-lucide="alert-triangle" class="lucide w-6 h-6 mr-2"></i> ATENCIÓN: Vencimientos Críticos
-                    </h4>
-                    <p class="text-red-600">Tienes <strong>${expiredDocs} documentos</strong> y <strong>${expiredTracking} servicios</strong> con fechas vencidas. ¡Prioriza la revisión!</p>
-                </div>
-                ` : `
-                <div class="bg-green-50 p-6 rounded-xl shadow-inner border border-green-200 mb-6">
-                    <h4 class="text-xl font-bold text-green-700 mb-3 flex items-center">
-                        <i data-lucide="thumbs-up" class="lucide w-6 h-6 mr-2"></i> Todo Al Día
-                    </h4>
-                    <p class="text-green-600">Actualmente no hay documentos ni servicios vencidos. ¡Buen trabajo de gestión!</p>
-                </div>
-                `}
-
-                <h3 class="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2">Tu ID de Sesión</h3>
-                <div class="p-4 bg-gray-100 rounded-lg text-sm text-gray-700 flex items-center justify-between">
-                    <span id="user-id-display-secondary">${currentUserId}</span>
-                    <i data-lucide="user-check" class="lucide w-5 h-5 text-green-600"></i>
-                </div>
-            `;
-            // Actualizar el ID de sesión en el elemento secundario
-            document.getElementById('user-id-display-secondary').textContent = currentUserId;
-            lucide.createIcons();
-        }
-
-        // ----------------------------------------------------
-        // 8. Lógica de Navegación (SPA like)
-        // ----------------------------------------------------
-
-        let currentView = 'overview';
-        
-        window.navigateTo = function(view) {
-            // Si la autenticación no está lista y no es la vista inicial, esperamos.
-            if (!isAuthReady) {
-                 console.log("Navegación pospuesta: Auth no lista.");
-                 return;
-            }
-            
-            currentView = view;
-            const contentDiv = document.getElementById('content');
-            
-            // Renderizar el template del módulo
-            switch (view) {
-                case 'overview':
-                    contentDiv.innerHTML = getOverviewTemplate();
-                    window.renderOverview();
-                    break;
-                case 'clients':
-                    contentDiv.innerHTML = getClientsTemplate();
-                    window.renderClients();
-                    break;
-                case 'documents':
-                    contentDiv.innerHTML = getDocumentsTemplate();
-                    // Inicializar select de clientes ANTES de renderizar la tabla
-                    populateClientSelect('docClient');
-                    window.renderDocuments();
-                    break;
-                case 'tracking':
-                    contentDiv.innerHTML = getTrackingTemplate();
-                    // Inicializar selects ANTES de renderizar la tabla
-                    populateClientSelect('trackingClient');
-                    window.updateTrackingFrequencyOptions();
-                    window.renderTracking();
-                    break;
-            }
-
-            // Actualizar la clase 'active' del menú
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            document.getElementById(`nav-${view}`)?.classList.add('active');
-            
-            lucide.createIcons();
-        }
-
-        function populateClientSelect(selectId) {
-            const select = document.getElementById(selectId);
-            if (!select) return;
-
-            // Conservar la opción por defecto si no hay clientes cargados
-            if (clients.length === 0) {
-                 select.innerHTML = '<option value="">--- No hay clientes cargados ---</option>';
-            } else {
-                 select.innerHTML = '<option value="">--- Seleccionar Cliente ---</option>' + 
-                               clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            }
-        }
-
-        // ----------------------------------------------------
-        // 9. Templates HTML de Módulos (Sin cambios)
-        // ----------------------------------------------------
-
-        function getOverviewTemplate() {
-            return `
-                <h1 class="text-3xl font-bold text-gray-800 mb-6">Resumen del Sistema SMI ARGENTINA DATA</h1>
-                <div id="overview-content">
-                    <p class="p-4 bg-blue-100 rounded-lg text-blue-800 flex items-center">
-                        <i data-lucide="loader-2" class="lucide w-5 h-5 animate-spin mr-2"></i>
-                        Cargando datos desde la base de datos...
-                    </p>
-                </div>
-            `;
-        }
-
-        function getClientsTemplate() {
-            return `
-                <h1 class="text-3xl font-bold text-gray-800 mb-6">Gestión de Clientes</h1>
-
-                <!-- Formulario de Nuevo Cliente -->
-                <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Nuevo Cliente</h2>
-                    <form onsubmit="addClient(event)" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label for="clientName" class="block text-sm font-medium text-gray-700">Nombre de la Empresa</label>
-                                <input type="text" id="clientName" name="clientName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            </div>
-                            <div>
-                                <label for="clientContact" class="block text-sm font-medium text-gray-700">Contacto / Teléfono</label>
-                                <input type="text" id="clientContact" name="clientContact" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            </div>
-                            <div>
-                                <label for="clientAddress" class="block text-sm font-medium text-gray-700">Dirección</label>
-                                <input type="text" id="clientAddress" name="clientAddress" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full md:w-auto px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 flex items-center justify-center">
-                            <i data-lucide="plus-circle" class="lucide w-5 h-5 mr-2"></i> Agregar Cliente
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Lista de Clientes -->
-                <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Clientes Registrados</h2>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contacto</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="clients-table-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Datos de clientes se insertarán aquí -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getDocumentsTemplate() {
-            return `
-                <h1 class="text-3xl font-bold text-gray-800 mb-6">Gestión de Documentos y Vencimientos</h1>
-
-                <!-- Formulario de Nuevo Documento -->
-                <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Adjuntar Documento</h2>
-                    <form onsubmit="addDocument(event)" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                                <label for="docClient" class="block text-sm font-medium text-gray-700">Cliente</label>
-                                <select id="docClient" name="docClient" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-white">
-                                    <option value="">--- Cargando Clientes ---</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="docName" class="block text-sm font-medium text-gray-700">Nombre del Documento</label>
-                                <input type="text" id="docName" name="docName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            </div>
-                            <div>
-                                <label for="docType" class="block text-sm font-medium text-gray-700">Tipo</label>
-                                <select id="docType" name="docType" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-white">
-                                    <option value="Fiscal">Fiscal (AFIP, Impuestos)</option>
-                                    <option value="Cliente">Cliente (Contratos, Permisos)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="docExpirationDate" class="block text-sm font-medium text-gray-700">Fecha de Vencimiento</label>
-                                <input type="date" id="docExpirationDate" name="docExpirationDate" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full md:w-auto px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 flex items-center justify-center">
-                            <i data-lucide="upload-cloud" class="lucide w-5 h-5 mr-2"></i> Adjuntar y Registrar Vencimiento
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Lista de Documentos -->
-                <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Documentos Registrados y Estado</h2>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre Doc.</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vence</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="documents-table-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Datos de documentos se insertarán aquí -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getTrackingTemplate() {
-            return `
-                <h1 class="text-3xl font-bold text-gray-800 mb-6">Seguimiento de Servicios (Mantenimiento, Inspección, Certificación)</h1>
-
-                <!-- Formulario de Nuevo Seguimiento -->
-                <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Registrar Nuevo Ciclo de Servicio</h2>
-                    <form onsubmit="addTracking(event)" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                            <div class="md:col-span-1">
-                                <label for="trackingClient" class="block text-sm font-medium text-gray-700">Cliente</label>
-                                <select id="trackingClient" name="trackingClient" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-white">
-                                    <option value="">--- Cargando Clientes ---</option>
-                                </select>
-                            </div>
-                            <div class="md:col-span-1">
-                                <label for="trackingType" class="block text-sm font-medium text-gray-700">Tipo de Servicio</label>
-                                <select id="trackingType" name="trackingType" onchange="updateTrackingFrequencyOptions()" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-white">
-                                    <option value="">Seleccione Tipo</option>
-                                    <option value="Mantenimiento">Mantenimiento</option>
-                                    <option value="Inspeccion">Inspección</option>
-                                    <option value="Certificacion">Certificación (Anual)</option>
-                                </select>
-                            </div>
-                            <div class="md:col-span-1" id="trackingFrequencyDiv">
-                                <label for="trackingFrequency" class="block text-sm font-medium text-gray-700">Frecuencia</label>
-                                <select id="trackingFrequency" name="trackingFrequency" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-white">
-                                    <!-- Opciones cargadas por JS -->
-                                </select>
-                            </div>
-                            <div class="md:col-span-1">
-                                <label for="trackingLastDate" class="block text-sm font-medium text-gray-700">Fecha del Último Servicio</label>
-                                <input type="date" id="trackingLastDate" name="trackingLastDate" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            </div>
-                            <div class="md:col-span-1 flex items-end">
-                                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 flex items-center justify-center h-[42px]">
-                                    <i data-lucide="save" class="lucide w-5 h-5 mr-2"></i> Guardar
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Lista de Seguimiento -->
-                <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Próximos Servicios Programados</h2>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último Servicio</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Próximo Vencimiento</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frecuencia</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tracking-table-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Datos de seguimiento se insertarán aquí -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        }
+            )
+            .subscribe();
+    }
 
 
-        // ----------------------------------------------------
-        // 10. Inicialización
-        // ----------------------------------------------------
-
-        // La navegación se inicia dentro de onAuthStateChanged una vez que la autenticación está lista.
-        // No necesitamos window.onload aquí para evitar doble inicialización.
-        // Si el script de Firebase aún no ha terminado, se muestra un mensaje de "Cargando aplicación..."
-        
-    </script>
-
-
-    <!-- Sidebar (Desplegable Vertical) -->
-    <aside class="w-64 bg-slate-800 text-white flex-shrink-0 flex flex-col hide-scrollbar overflow-y-auto shadow-xl">
-        <div class="p-6 text-xl font-extrabold bg-blue-600 text-center uppercase tracking-wider rounded-b-lg">
-            SMI ARGENTINA DATA
-        </div>
-        
-        <nav class="p-4 flex-grow">
-            <div id="nav-overview" onclick="navigateTo('overview')" class="sidebar-item active">
-                <i data-lucide="layout-dashboard" class="lucide"></i> Resumen General
-            </div>
-            <div id="nav-clients" onclick="navigateTo('clients')" class="sidebar-item">
-                <i data-lucide="users-2" class="lucide"></i> Clientes
-            </div>
-            <div id="nav-documents" onclick="navigateTo('documents')" class="sidebar-item">
-                <i data-lucide="folder-open" class="lucide"></i> Documentos y Vencimientos
-            </div>
-            <div id="nav-tracking" onclick="navigateTo('tracking')" class="sidebar-item">
-                <i data-lucide="calendar-clock" class="lucide"></i> Seguimiento de Servicios
-            </div>
-        </nav>
-        
-        <div class="p-4 text-xs text-slate-400 border-t border-slate-700">
-            <p>Automatización de Gestión Empresarial</p>
-            <p class="mt-1">ID de Sesión: <span id="user-id-display" class="font-mono text-slate-200 break-all">Cargando...</span></p>
-        </div>
-    </aside>
-
-    <!-- Contenido Principal -->
-    <main class="flex-grow p-4 md:p-8 overflow-y-auto">
-        <!-- Contenedor de Mensajes -->
-        <div id="message-container" class="fixed top-4 right-4 z-50 transition-all hidden"></div>
-        
-        <!-- Contenedor de la vista actual -->
-        <div id="content" class="min-h-full">
-            <p class="text-center text-gray-500 mt-10">Cargando aplicación...</p>
-        </div>
-    </main>
+    // =========================================================
+    // CRUD: DOCUMENTOS
+    // =========================================================
     
-    <!-- Inicialización de Íconos -->
-    <script>
-        lucide.createIcons();
-    </script>
+    /**
+     * Reemplaza onSnapshot (Firebase) con select + realtime (Supabase)
+     * Realiza un JOIN implícito para obtener el nombre del cliente
+     */
+    function startDocumentosListener() {
+        const fetchDocumentos = async () => {
+            const { data, error } = await getCollection('documentos')
+                // Selecciona campos de documentos y el nombre del cliente (JOIN)
+                .select(`*, clientes (nombre)`) 
+                .order('fecha_vencimiento', { ascending: true }); 
 
+            if (error) {
+                console.error("Error al cargar documentos:", error);
+                return;
+            }
+
+            const documentosData = data.map(doc => ({
+                ...doc,
+                cliente_nombre: doc.clientes ? doc.clientes.nombre : 'Cliente Desconocido'
+            }));
+
+            window.documentos = documentosData; 
+            if (currentView === 'documentos') {
+                renderDocumentosList(documentosData);
+            }
+        };
+
+        fetchDocumentos();
+
+        supabase
+            .channel('documentos_realtime')
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'documentos' },
+                () => { fetchDocumentos(); }
+            )
+            .subscribe();
+    }
+    
+    // (La función para GUARDAR DOCUMENTO sería similar a saveCliente, usando la tabla 'documentos')
+
+
+    // =========================================================
+    // CRUD: SERVICIOS
+    // =========================================================
+
+    /**
+     * Reemplaza onSnapshot (Firebase) con select + realtime (Supabase)
+     * Realiza un JOIN implícito para obtener el nombre del cliente
+     */
+    function startServiciosListener() {
+        const fetchServicios = async () => {
+            const { data, error } = await getCollection('servicios')
+                // Selecciona campos de servicios y el nombre del cliente (JOIN)
+                .select(`*, clientes (nombre)`)
+                .order('fecha_fin_estimada', { ascending: true }); 
+
+            if (error) {
+                console.error("Error al cargar servicios:", error);
+                return;
+            }
+
+            const serviciosData = data.map(doc => ({
+                ...doc,
+                cliente_nombre: doc.clientes ? doc.clientes.nombre : 'Cliente Desconocido'
+            }));
+
+            window.servicios = serviciosData; 
+            if (currentView === 'servicios') {
+                renderServiciosList(serviciosData);
+            }
+        };
+
+        fetchServicios();
+
+        supabase
+            .channel('servicios_realtime')
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'servicios' },
+                () => { fetchServicios(); }
+            )
+            .subscribe();
+    }
+    
+    // (La función para GUARDAR SERVICIO sería similar a saveCliente, usando la tabla 'servicios')
+
+
+    // =================================================================================
+    // VISTAS DEL DASHBOARD (Rendering)
+    // =================================================================================
+
+    // VISTA GENERAL
+    function renderGeneralView() {
+        const totalClientes = window.clientes.length;
+        const docsVencidos = window.documentos.filter(d => new Date(d.fecha_vencimiento) < new Date()).length;
+        const serviciosEnCurso = window.servicios.filter(s => s.estado === 'En Curso').length;
+
+        document.getElementById('content-area').innerHTML = `
+            <h2 class="text-3xl font-semibold text-gray-800 mb-6">Resumen General</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="data-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
+                    <p class="text-sm font-medium text-gray-500">Total Clientes</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${totalClientes}</p>
+                    <span class="text-xs text-blue-500 flex items-center mt-2"><span data-lucide="trending-up" class="w-4 h-4 mr-1"></span> Información actualizada</span>
+                </div>
+                <div class="data-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
+                    <p class="text-sm font-medium text-gray-500">Documentos Vencidos</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${docsVencidos}</p>
+                    <span class="text-xs text-red-500 flex items-center mt-2"><span data-lucide="alert-triangle" class="w-4 h-4 mr-1"></span> Requiere acción inmediata</span>
+                </div>
+                <div class="data-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500">
+                    <p class="text-sm font-medium text-gray-500">Servicios Activos</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${serviciosEnCurso}</p>
+                    <span class="text-xs text-yellow-500 flex items-center mt-2"><span data-lucide="refresh-cw" class="w-4 h-4 mr-1"></span> En seguimiento</span>
+                </div>
+            </div>
+
+            <div class="mt-8 bg-white p-6 rounded-xl shadow-lg">
+                <h3 class="text-xl font-semibold mb-4">Próximos Vencimientos (Top 5)</h3>
+                ${renderVencimientosTable(window.documentos)}
+            </div>
+        `;
+        lucide.createIcons();
+    }
+    
+    function renderVencimientosTable(documentos) {
+        const proximos = documentos
+            .filter(d => new Date(d.fecha_vencimiento) >= new Date())
+            .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))
+            .slice(0, 5);
+
+        if (proximos.length === 0) return '<p class="text-gray-500">No hay documentos próximos a vencer.</p>';
+
+        return `
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${proximos.map(doc => `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doc.cliente_nombre || 'N/A'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doc.nombre_documento}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(doc.fecha_vencimiento).toLocaleDateString('es-AR')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    // VISTA CLIENTES
+    function renderClientesView() {
+        document.getElementById('content-area').innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-semibold text-gray-800">Clientes Registrados</h2>
+                <button onclick="openModal('modal-cliente')" class="px-4 py-2 bg-green-600 text-white rounded-lg btn-primary flex items-center shadow-md hover:bg-green-700">
+                    <span data-lucide="plus" class="w-5 h-5 mr-2"></span>
+                    Nuevo Cliente
+                </button>
+            </div>
+            <div id="clientes-list-container" class="bg-white p-6 rounded-xl shadow-lg">
+                ${renderClientesList(window.clientes)}
+            </div>
+        `;
+        lucide.createIcons();
+    }
+    
+    function renderClientesList(clientes) {
+        if (clientes.length === 0) return '<p class="text-gray-500">No hay clientes registrados.</p>';
+
+        return `
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUIT</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${clientes.map(cliente => `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${cliente.nombre}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${cliente.cuit}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${cliente.direccion || 'N/A'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button class="text-blue-600 hover:text-blue-900" title="Ver Detalle"><span data-lucide="eye" class="w-5 h-5"></span></button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    // VISTA DOCUMENTOS
+    function renderDocumentosView() {
+        document.getElementById('content-area').innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-semibold text-gray-800">Documentos y Vencimientos</h2>
+                <button class="px-4 py-2 bg-green-600 text-white rounded-lg btn-primary flex items-center shadow-md hover:bg-green-700">
+                    <span data-lucide="plus" class="w-5 h-5 mr-2"></span>
+                    Nuevo Documento
+                </button>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                ${renderDocumentosList(window.documentos)}
+            </div>
+        `;
+        lucide.createIcons();
+    }
+    
+    function renderDocumentosList(documentos) {
+        if (documentos.length === 0) return '<p class="text-gray-500">No hay documentos registrados.</p>';
+
+        return `
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${documentos.map(doc => `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${doc.cliente_nombre || 'N/A'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${doc.nombre_documento}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(doc.fecha_vencimiento).toLocaleDateString('es-AR')}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${doc.estado === 'Vencido' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                    ${doc.estado}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    // VISTA SERVICIOS
+    function renderServiciosView() {
+        document.getElementById('content-area').innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-semibold text-gray-800">Seguimiento de Servicios</h2>
+                <button class="px-4 py-2 bg-green-600 text-white rounded-lg btn-primary flex items-center shadow-md hover:bg-green-700">
+                    <span data-lucide="plus" class="w-5 h-5 mr-2"></span>
+                    Nuevo Servicio
+                </button>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                ${renderServiciosList(window.servicios)}
+            </div>
+        `;
+        lucide.createIcons();
+    }
+    
+    function renderServiciosList(servicios) {
+        if (servicios.length === 0) return '<p class="text-gray-500">No hay servicios en seguimiento.</p>';
+
+        return `
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Servicio</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fin Estimado</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${servicios.map(s => `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${s.cliente_nombre || 'N/A'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${s.nombre_servicio}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(s.fecha_fin_estimada).toLocaleDateString('es-AR')}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${s.estado === 'En Curso' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">
+                                    ${s.estado}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+
+    // =================================================================================
+    // NAVEGACIÓN Y MANEJO DE ESTADO
+    // =================================================================================
+
+    function navigate(view) {
+        currentView = view;
+        const links = document.querySelectorAll('.nav-link');
+        links.forEach(link => {
+            link.classList.remove('active-link');
+            if (link.getAttribute('onclick').includes(view)) {
+                link.classList.add('active-link');
+            }
+        });
+
+        // Llama a la función de renderizado de la vista actual
+        switch(view) {
+            case 'general':
+                renderGeneralView();
+                break;
+            case 'clientes':
+                renderClientesView();
+                break;
+            case 'documentos':
+                renderDocumentosView();
+                break;
+            case 'servicios':
+                renderServiciosView();
+                break;
+        }
+    }
+
+    // MANEJO DEL FORMULARIO
+    document.getElementById('form-cliente').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const clienteData = {
+            nombre: document.getElementById('cliente-nombre').value,
+            cuit: document.getElementById('cliente-cuit').value,
+            direccion: document.getElementById('cliente-direccion').value,
+            telefono: document.getElementById('cliente-telefono').value,
+        };
+
+        const success = await saveCliente(clienteData);
+        if (success) {
+            document.getElementById('form-cliente').reset();
+        }
+    });
+
+
+    // =================================================================================
+    // INICIO DE LA APLICACIÓN
+    // =================================================================================
+
+    window.onload = function() {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('TU_')) {
+            document.getElementById('content-area').innerHTML = `
+                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md shadow-md" role="alert">
+                    <p class="font-bold">⚠️ ¡Atención! Error de Conexión</p>
+                    <p>Debes abrir el archivo <code>index.html</code> y reemplazar las variables <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> con tus credenciales reales de Supabase.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Mostrar el ID de sesión
+        document.getElementById('session-id').textContent = userId;
+        
+        // Iniciar todos los listeners de datos migrados a Supabase
+        startClientesListener();
+        startDocumentosListener();
+        startServiciosListener();
+        
+        // Renderizar la vista inicial
+        navigate(currentView);
+        isInitialized = true;
+    }
+</script>
 </body>
 </html>
