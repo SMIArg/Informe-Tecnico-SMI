@@ -97,30 +97,31 @@
 
 <script type="module">
     // =================================================================================
-    // MIGRACIÓN A SUPABASE - PASO 2: CONEXIÓN
+    // MIGRACIÓN A SUPABASE - CONEXIÓN
     //
-    // ¡¡¡ ATENCIÓN !!!
-    // DEBES REEMPLAZAR ESTAS DOS VARIABLES CON TUS CREDENCIALES REALES DE SUPABASE
-    // (Settings > API en tu Dashboard de Supabase)
+    // 🚨 REEMPLAZA ESTAS VARIABLES CON TUS CREDENCIALES REALES DE SUPABASE 🚨
     // =================================================================================
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-    // 🚨 REEMPLAZA ESTO 🚨
-    const SUPABASE_URL = 'TU_URL_DE_PROYECTO_SUPABASE'; // Ejemplo: 'https://abcdefg1234.supabase.co'
-    const SUPABASE_ANON_KEY = 'TU_CLAVE_PUBLICA_ANON_SUPABASE'; // Ejemplo: 'eyJhbGciOiJIUzI1NiIsInR5c...'
+    // 🚨 TUS CREDENCIALES REALES VAN AQUÍ 🚨
+    const SUPABASE_URL = 'TU_URL_DE_PROYECTO_SUPABASE'; // EJEMPLO: 'https://abcdefg1234.supabase.co'
+    const SUPABASE_ANON_KEY = 'TU_CLAVE_PUBLICA_ANON_SUPABASE'; // EJEMPLO: 'eyJhbGciOiJIUzI1NiIsInR5c...'
 
     // Inicializar el cliente
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Variables de estado global
     let currentView = 'general';
-    let db = supabase; // Alias para compatibilidad
     let userId = 'SMI-USER-PUBLIC-SESSION'; 
     window.clientes = [];
     window.documentos = [];
     window.servicios = [];
-    let isInitialized = false;
-
+    
+    // Función para obtener la colección (adaptada a Supabase)
+    function getCollection(tableName) {
+        return supabase.from(tableName);
+    }
+    
     // =================================================================================
     // FUNCIONES DE UTILIDAD Y UI (Interacción)
     // =================================================================================
@@ -167,26 +168,29 @@
         document.getElementById(id)?.classList.add('hidden');
         document.getElementById(id)?.classList.remove('flex');
     }
-
-    // =================================================================================
-    // MIGRACIÓN A SUPABASE - PASO 3: LÓGICA DE DATOS
-    // =================================================================================
-
-    // Función genérica para obtener la colección (adaptada a Supabase)
-    function getCollection(tableName) {
-        return supabase.from(tableName);
-    }
     
-    // =========================================================
-    // CRUD: CLIENTES
-    // =========================================================
+    // Función de utilidad para verificar vencimiento
+    function isVencido(dateString) {
+        if (!dateString) return false;
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Comparar solo la fecha
+        const expirationDate = new Date(dateString);
+        expirationDate.setHours(0, 0, 0, 0); // Comparar solo la fecha
+        return expirationDate < now;
+    }
 
-    /**
-     * Reemplaza addDoc (Firebase) con insert (Supabase)
-     */
+    // =================================================================================
+    // LÓGICA DE DATOS MIGRADA A SUPABASE
+    // =================================================================================
+
+    // ---------------------------------------------------------------------------------
+    // CRUD: CLIENTES
+    // ---------------------------------------------------------------------------------
+
     async function saveCliente(clienteData) {
         mostrarCargando(true);
         try {
+            // Inserta el objeto del cliente
             const { error } = await getCollection('clientes').insert([clienteData]);
             
             if (error) {
@@ -206,57 +210,45 @@
         }
     }
     
-    /**
-     * Reemplaza onSnapshot (Firebase) con select + realtime (Supabase)
-     */
     function startClientesListener() {
         const fetchClientes = async () => {
+            // SELECT * FROM clientes ORDER BY nombre ASC
             const { data, error } = await getCollection('clientes')
                 .select('*')
                 .order('nombre', { ascending: true });
 
             if (error) {
                 console.error("Error al cargar clientes:", error);
-                mostrarAlerta('No se pudieron cargar los clientes.', 'error');
                 return;
             }
 
             window.clientes = data;
-            // Solo renderiza si el usuario está en la vista de clientes
-            if (currentView === 'clientes') {
-                renderClientesList(data);
+            if (currentView === 'clientes' || currentView === 'general') {
+                navigate(currentView, false); // Vuelve a renderizar sin cambiar el link activo
             }
         };
 
-        // Llama a la función de carga inicial
-        fetchClientes();
+        fetchClientes(); // Carga inicial
 
-        // Configura el canal de escucha en tiempo real
+        // Escucha en tiempo real para cualquier cambio en la tabla 'clientes'
         supabase
             .channel('clientes_realtime')
             .on('postgres_changes', 
                 { event: '*', schema: 'public', table: 'clientes' },
-                () => {
-                    console.log('Cambio detectado en clientes. Refrescando lista...');
-                    fetchClientes(); 
-                }
+                () => { fetchClientes(); } // Recarga la data cuando hay cambios
             )
             .subscribe();
     }
 
 
-    // =========================================================
+    // ---------------------------------------------------------------------------------
     // CRUD: DOCUMENTOS
-    // =========================================================
+    // ---------------------------------------------------------------------------------
     
-    /**
-     * Reemplaza onSnapshot (Firebase) con select + realtime (Supabase)
-     * Realiza un JOIN implícito para obtener el nombre del cliente
-     */
     function startDocumentosListener() {
         const fetchDocumentos = async () => {
+            // SELECT *, clientes(nombre) FROM documentos ORDER BY fecha_vencimiento ASC
             const { data, error } = await getCollection('documentos')
-                // Selecciona campos de documentos y el nombre del cliente (JOIN)
                 .select(`*, clientes (nombre)`) 
                 .order('fecha_vencimiento', { ascending: true }); 
 
@@ -267,17 +259,20 @@
 
             const documentosData = data.map(doc => ({
                 ...doc,
+                // Agrega el estado de vencimiento calculado
+                estado: isVencido(doc.fecha_vencimiento) ? 'Vencido' : 'Vigente',
                 cliente_nombre: doc.clientes ? doc.clientes.nombre : 'Cliente Desconocido'
             }));
 
             window.documentos = documentosData; 
-            if (currentView === 'documentos') {
-                renderDocumentosList(documentosData);
+            if (currentView === 'documentos' || currentView === 'general') {
+                navigate(currentView, false); // Vuelve a renderizar sin cambiar el link activo
             }
         };
 
         fetchDocumentos();
 
+        // Escucha en tiempo real para cualquier cambio en la tabla 'documentos'
         supabase
             .channel('documentos_realtime')
             .on('postgres_changes', 
@@ -287,21 +282,14 @@
             .subscribe();
     }
     
-    // (La función para GUARDAR DOCUMENTO sería similar a saveCliente, usando la tabla 'documentos')
-
-
-    // =========================================================
+    // ---------------------------------------------------------------------------------
     // CRUD: SERVICIOS
-    // =========================================================
+    // ---------------------------------------------------------------------------------
 
-    /**
-     * Reemplaza onSnapshot (Firebase) con select + realtime (Supabase)
-     * Realiza un JOIN implícito para obtener el nombre del cliente
-     */
     function startServiciosListener() {
         const fetchServicios = async () => {
+            // SELECT *, clientes(nombre) FROM servicios ORDER BY fecha_fin_estimada ASC
             const { data, error } = await getCollection('servicios')
-                // Selecciona campos de servicios y el nombre del cliente (JOIN)
                 .select(`*, clientes (nombre)`)
                 .order('fecha_fin_estimada', { ascending: true }); 
 
@@ -316,13 +304,14 @@
             }));
 
             window.servicios = serviciosData; 
-            if (currentView === 'servicios') {
-                renderServiciosList(serviciosData);
+            if (currentView === 'servicios' || currentView === 'general') {
+                navigate(currentView, false); // Vuelve a renderizar sin cambiar el link activo
             }
         };
 
         fetchServicios();
 
+        // Escucha en tiempo real para cualquier cambio en la tabla 'servicios'
         supabase
             .channel('servicios_realtime')
             .on('postgres_changes', 
@@ -332,8 +321,6 @@
             .subscribe();
     }
     
-    // (La función para GUARDAR SERVICIO sería similar a saveCliente, usando la tabla 'servicios')
-
 
     // =================================================================================
     // VISTAS DEL DASHBOARD (Rendering)
@@ -341,8 +328,9 @@
 
     // VISTA GENERAL
     function renderGeneralView() {
+        // Asegúrate de usar los datos ya procesados
         const totalClientes = window.clientes.length;
-        const docsVencidos = window.documentos.filter(d => new Date(d.fecha_vencimiento) < new Date()).length;
+        const docsVencidos = window.documentos.filter(d => d.estado === 'Vencido').length;
         const serviciosEnCurso = window.servicios.filter(s => s.estado === 'En Curso').length;
 
         document.getElementById('content-area').innerHTML = `
@@ -351,12 +339,12 @@
                 <div class="data-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
                     <p class="text-sm font-medium text-gray-500">Total Clientes</p>
                     <p class="text-3xl font-bold text-gray-900 mt-1">${totalClientes}</p>
-                    <span class="text-xs text-blue-500 flex items-center mt-2"><span data-lucide="trending-up" class="w-4 h-4 mr-1"></span> Información actualizada</span>
+                    <span class="text-xs text-blue-500 flex items-center mt-2"><span data-lucide="users" class="w-4 h-4 mr-1"></span> Clientes activos</span>
                 </div>
                 <div class="data-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
                     <p class="text-sm font-medium text-gray-500">Documentos Vencidos</p>
                     <p class="text-3xl font-bold text-gray-900 mt-1">${docsVencidos}</p>
-                    <span class="text-xs text-red-500 flex items-center mt-2"><span data-lucide="alert-triangle" class="w-4 h-4 mr-1"></span> Requiere acción inmediata</span>
+                    <span class="text-xs text-red-500 flex items-center mt-2"><span data-lucide="alert-triangle" class="w-4 h-4 mr-1"></span> Requiere acción</span>
                 </div>
                 <div class="data-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500">
                     <p class="text-sm font-medium text-gray-500">Servicios Activos</p>
@@ -374,32 +362,35 @@
     }
     
     function renderVencimientosTable(documentos) {
+        // Filtra solo vigentes y ordena por fecha de vencimiento ascendente
         const proximos = documentos
-            .filter(d => new Date(d.fecha_vencimiento) >= new Date())
+            .filter(d => d.estado === 'Vigente')
             .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))
             .slice(0, 5);
 
-        if (proximos.length === 0) return '<p class="text-gray-500">No hay documentos próximos a vencer.</p>';
+        if (proximos.length === 0) return '<p class="text-gray-500">No hay documentos próximos a vencer o todos están vencidos.</p>';
 
         return `
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    ${proximos.map(doc => `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doc.cliente_nombre || 'N/A'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doc.nombre_documento}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(doc.fecha_vencimiento).toLocaleDateString('es-AR')}</td>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${proximos.map(doc => `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doc.cliente_nombre || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${doc.nombre_documento}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(doc.fecha_vencimiento).toLocaleDateString('es-AR')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     }
 
@@ -424,28 +415,30 @@
         if (clientes.length === 0) return '<p class="text-gray-500">No hay clientes registrados.</p>';
 
         return `
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUIT</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    ${clientes.map(cliente => `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${cliente.nombre}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${cliente.cuit}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${cliente.direccion || 'N/A'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button class="text-blue-600 hover:text-blue-900" title="Ver Detalle"><span data-lucide="eye" class="w-5 h-5"></span></button>
-                            </td>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUIT</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${clientes.map(cliente => `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${cliente.nombre}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${cliente.cuit}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${cliente.direccion || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900" title="Ver Detalle"><span data-lucide="eye" class="w-5 h-5"></span></button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     }
     
@@ -470,30 +463,32 @@
         if (documentos.length === 0) return '<p class="text-gray-500">No hay documentos registrados.</p>';
 
         return `
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    ${documentos.map(doc => `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${doc.cliente_nombre || 'N/A'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${doc.nombre_documento}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(doc.fecha_vencimiento).toLocaleDateString('es-AR')}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${doc.estado === 'Vencido' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                                    ${doc.estado}
-                                </span>
-                            </td>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${documentos.map(doc => `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${doc.cliente_nombre || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${doc.nombre_documento}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(doc.fecha_vencimiento).toLocaleDateString('es-AR')}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${doc.estado === 'Vencido' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                        ${doc.estado}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     }
 
@@ -518,30 +513,32 @@
         if (servicios.length === 0) return '<p class="text-gray-500">No hay servicios en seguimiento.</p>';
 
         return `
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Servicio</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fin Estimado</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    ${servicios.map(s => `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${s.cliente_nombre || 'N/A'}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${s.nombre_servicio}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(s.fecha_fin_estimada).toLocaleDateString('es-AR')}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${s.estado === 'En Curso' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">
-                                    ${s.estado}
-                                </span>
-                            </td>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Servicio</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fin Estimado</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${servicios.map(s => `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${s.cliente_nombre || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${s.nombre_servicio}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${new Date(s.fecha_fin_estimada).toLocaleDateString('es-AR')}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${s.estado === 'En Curso' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">
+                                        ${s.estado}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     }
 
@@ -550,15 +547,18 @@
     // NAVEGACIÓN Y MANEJO DE ESTADO
     // =================================================================================
 
-    function navigate(view) {
+    function navigate(view, updateLink = true) {
         currentView = view;
-        const links = document.querySelectorAll('.nav-link');
-        links.forEach(link => {
-            link.classList.remove('active-link');
-            if (link.getAttribute('onclick').includes(view)) {
-                link.classList.add('active-link');
-            }
-        });
+        
+        if (updateLink) {
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(link => {
+                link.classList.remove('active-link');
+                if (link.getAttribute('onclick').includes(view)) {
+                    link.classList.add('active-link');
+                }
+            });
+        }
 
         // Llama a la función de renderizado de la vista actual
         switch(view) {
@@ -577,7 +577,7 @@
         }
     }
 
-    // MANEJO DEL FORMULARIO
+    // MANEJO DEL FORMULARIO DE CLIENTE
     document.getElementById('form-cliente').addEventListener('submit', async (e) => {
         e.preventDefault();
         const clienteData = {
@@ -585,6 +585,7 @@
             cuit: document.getElementById('cliente-cuit').value,
             direccion: document.getElementById('cliente-direccion').value,
             telefono: document.getElementById('cliente-telefono').value,
+            // Agrega created_at (Supabase lo añade automáticamente si no se provee)
         };
 
         const success = await saveCliente(clienteData);
@@ -595,31 +596,36 @@
 
 
     // =================================================================================
-    // INICIO DE LA APLICACIÓN
+    // INICIO DE LA APLICACIÓN (Validación de Configuración)
     // =================================================================================
 
     window.onload = function() {
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('TU_')) {
+        // Validación de credenciales
+        const isUrlValid = SUPABASE_URL && !SUPABASE_URL.includes('TU_');
+        const isKeyValid = SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('TU_');
+        
+        if (!isUrlValid || !isKeyValid) {
             document.getElementById('content-area').innerHTML = `
-                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md shadow-md" role="alert">
-                    <p class="font-bold">⚠️ ¡Atención! Error de Conexión</p>
-                    <p>Debes abrir el archivo <code>index.html</code> y reemplazar las variables <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> con tus credenciales reales de Supabase.</p>
+                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-6 rounded-xl shadow-md" role="alert">
+                    <p class="font-bold text-lg">❌ Error de Configuración de Supabase</p>
+                    <p class="mt-2">Por favor, abre el archivo <code>index.html</code> y reemplaza las variables <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> con tus credenciales reales de tu proyecto Supabase.</p>
                 </div>
             `;
+            // Ocultar el estado de la sesión si no hay conexión
+            document.getElementById('session-id').textContent = 'ERROR';
             return;
         }
 
-        // Mostrar el ID de sesión
+        // Si las credenciales son válidas, inicia la aplicación:
         document.getElementById('session-id').textContent = userId;
         
-        // Iniciar todos los listeners de datos migrados a Supabase
+        // Iniciar todos los listeners de datos
         startClientesListener();
         startDocumentosListener();
         startServiciosListener();
         
         // Renderizar la vista inicial
         navigate(currentView);
-        isInitialized = true;
     }
 </script>
 </body>
