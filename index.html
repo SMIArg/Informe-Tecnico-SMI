@@ -1,54 +1,99 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>SMI Argentina - Informes</title>
+<meta charset="UTF-8">
+<title>SMI Argentina</title>
 
-  <!-- React + Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body {
+  font-family: Arial;
+  background: #f3f4f6;
+}
 
-  <style>
-    body {
-      font-family: Arial;
-      background: #f3f4f6;
-      padding: 20px;
-    }
+.container {
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+}
 
-    .container {
-      max-width: 700px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-    }
+h2 {
+  color: #0056b3;
+}
 
-    input, textarea {
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-    }
+.section {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
 
-    canvas {
-      border: 1px solid #ccc;
-    }
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
 
-    button {
-      background: #0056b3;
-      color: white;
-      padding: 10px;
-      border: none;
-      cursor: pointer;
-    }
+input, textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
 
-    img {
-      margin: 5px;
-    }
-  </style>
+.images {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.img-box {
+  border: 2px dashed #ccc;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.status button {
+  margin: 5px;
+  padding: 10px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+}
+
+.active {
+  background: #0056b3;
+  color: white;
+}
+
+canvas {
+  border: 1px solid #ccc;
+}
+
+.main-btn {
+  width: 100%;
+  padding: 15px;
+  background: #0056b3;
+  color: white;
+  font-size: 18px;
+  border: none;
+  border-radius: 10px;
+}
+</style>
 </head>
 
 <body>
@@ -61,175 +106,187 @@ const { useState, useRef } = React;
 
 function App() {
 
-  const canvasRef = useRef(null);
+const canvasRef = useRef(null);
 
-  const [formData, setFormData] = useState({
-    cliente: "",
-    equipo: "",
-    nroInforme: "",
-    fecha: new Date().toISOString().split("T")[0],
-    nroOrden: "",
-    ubicacion: "",
-    observaciones: "",
-    estado: "APTO",
-    aclaracion: ""
+const [form, setForm] = useState({
+  cliente:"",
+  equipo:"",
+  nroInforme:"",
+  fecha:new Date().toISOString().split("T")[0],
+  nroOrden:"",
+  ubicacion:"",
+  observaciones:"",
+  estado:"APTO",
+  aclaracion:""
+});
+
+const [images,setImages]=useState([]);
+
+const handleChange=e=>{
+  setForm({...form,[e.target.name]:e.target.value});
+};
+
+const uploadImg=e=>{
+  const files=Array.from(e.target.files);
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onloadend=()=>setImages(p=>[...p,r.result]);
+    r.readAsDataURL(f);
+  });
+};
+
+// FIRMA
+let drawing=false;
+
+const start=e=>{
+  const ctx=canvasRef.current.getContext("2d");
+  ctx.beginPath();
+  drawing=true;
+};
+
+const draw=e=>{
+  if(!drawing)return;
+  const rect=canvasRef.current.getBoundingClientRect();
+  const ctx=canvasRef.current.getContext("2d");
+  ctx.lineTo(e.clientX-rect.left,e.clientY-rect.top);
+  ctx.stroke();
+};
+
+const stop=()=>drawing=false;
+
+const clear=()=>{
+  const ctx=canvasRef.current.getContext("2d");
+  ctx.clearRect(0,0,400,150);
+};
+
+// PDF
+const generatePDF=()=>{
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  let y=20;
+
+  doc.setTextColor(0,0,150);
+  doc.setFontSize(16);
+  doc.text("SMI Argentina",15,y);
+
+  y+=6;
+  doc.setFontSize(10);
+  doc.setTextColor(0,0,0);
+  doc.text("Razon Social: Ruben Horacio Llorens",15,y);
+  y+=4;
+  doc.text("CUIT: 20-22167232-2",15,y);
+
+  y+=10;
+  doc.setFontSize(18);
+  doc.text("INFORME FOTOGRAFICO",105,y,{align:"center"});
+
+  y+=10;
+  doc.setFontSize(10);
+  doc.text("Cliente: "+form.cliente,15,y);
+  y+=5;
+  doc.text("Equipo: "+form.equipo,15,y);
+  y+=5;
+  doc.text("Ubicación: "+form.ubicacion,15,y);
+
+  y+=10;
+  doc.setTextColor(0,0,150);
+  doc.text("ESTADO: "+form.estado,15,y);
+
+  y+=10;
+
+  images.forEach((img,i)=>{
+    doc.addImage(img,"JPEG",15,y,80,50);
+    y+=55;
   });
 
-  const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  doc.setTextColor(0,0,0);
+  doc.text("Observaciones:",15,y);
+  y+=5;
+  doc.text(form.observaciones||"-",15,y);
 
-  const handleChange = (e) => {
-    setFormData({...formData, [e.target.name]: e.target.value});
-  };
+  y+=20;
+  const sign=canvasRef.current.toDataURL();
+  doc.addImage(sign,"PNG",15,y,60,25);
 
-  const handleImages = (e) => {
-    const files = Array.from(e.target.files);
+  y+=30;
+  doc.text("Aclaración: "+form.aclaracion,15,y);
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImages(prev => [...prev, reader.result]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
+  doc.save("Informe_"+form.nroInforme+".pdf");
+};
 
-  // FIRMA
-  let drawing = false;
+return(
+<div className="container">
 
-  const start = (e) => {
-    const ctx = canvasRef.current.getContext("2d");
-    ctx.beginPath();
-    drawing = true;
-  };
+<h2>SMI Argentina</h2>
 
-  const draw = (e) => {
-    if (!drawing) return;
+<div className="section">
+<h3>Datos</h3>
+<div className="grid">
+<input name="cliente" placeholder="Cliente" onChange={handleChange}/>
+<input name="equipo" placeholder="Equipo" onChange={handleChange}/>
+<input name="nroInforme" placeholder="Nro Informe" onChange={handleChange}/>
+<input type="date" name="fecha" onChange={handleChange}/>
+<input name="nroOrden" placeholder="Nro Orden" onChange={handleChange}/>
+<input name="ubicacion" placeholder="Ubicación" onChange={handleChange}/>
+</div>
+</div>
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const ctx = canvasRef.current.getContext("2d");
+<div className="section">
+<h3>Estado</h3>
+<div className="status">
+{["APTO","APTO CON CONDICIONES","NO APTO"].map(s=>(
+<button
+key={s}
+className={form.estado===s?"active":""}
+onClick={()=>setForm({...form,estado:s})}
+>{s}</button>
+))}
+</div>
+</div>
 
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.stroke();
-  };
+<div className="section">
+<h3>Imágenes</h3>
+<input type="file" multiple onChange={uploadImg}/>
+<div className="images">
+{images.map((img,i)=>(
+<div className="img-box">
+<img src={img}/>
+</div>
+))}
+</div>
+</div>
 
-  const stop = () => drawing = false;
+<div className="section">
+<h3>Observaciones</h3>
+<textarea name="observaciones" onChange={handleChange}></textarea>
+</div>
 
-  const clear = () => {
-    const ctx = canvasRef.current.getContext("2d");
-    ctx.clearRect(0, 0, 400, 150);
-  };
+<div className="section">
+<h3>Firma</h3>
+<canvas
+ref={canvasRef}
+width={400}
+height={150}
+onMouseDown={start}
+onMouseMove={draw}
+onMouseUp={stop}
+onMouseLeave={stop}
+/>
+<br/>
+<button onClick={clear}>Limpiar</button>
+<input name="aclaracion" placeholder="Aclaración" onChange={handleChange}/>
+</div>
 
-  // PDF
-  const generatePDF = () => {
+<button className="main-btn" onClick={generatePDF}>
+GENERAR PDF
+</button>
 
-    if (!formData.cliente || !formData.equipo || !formData.nroInforme) {
-      alert("Completar campos obligatorios");
-      return;
-    }
-
-    setLoading(true);
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    let y = 20;
-
-    // HEADER
-    doc.setFontSize(16);
-    doc.text("SMI Argentina", 15, y);
-
-    y += 6;
-    doc.setFontSize(10);
-    doc.text("Razon Social: Ruben Horacio Llorens", 15, y);
-    y += 4;
-    doc.text("CUIT: 20-22167232-2", 15, y);
-
-    y += 10;
-    doc.setFontSize(18);
-    doc.text("INFORME FOTOGRAFICO", 105, y, { align: "center" });
-
-    // DATOS
-    y += 10;
-    doc.setFontSize(10);
-    doc.text("Cliente: " + formData.cliente, 15, y);
-    y += 5;
-    doc.text("Equipo: " + formData.equipo, 15, y);
-    y += 5;
-    doc.text("Fecha: " + formData.fecha, 15, y);
-
-    // IMÁGENES
-    y += 10;
-
-    images.forEach((img, i) => {
-      doc.addImage(img, "JPEG", 15, y, 80, 50);
-      y += 55;
-    });
-
-    // OBS
-    doc.text("Observaciones:", 15, y);
-    y += 5;
-    doc.text(formData.observaciones || "-", 15, y);
-
-    // FIRMA
-    y += 20;
-    const signature = canvasRef.current.toDataURL("image/png");
-    doc.addImage(signature, "PNG", 15, y, 60, 25);
-
-    y += 30;
-    doc.text("Aclaración: " + formData.aclaracion, 15, y);
-
-    doc.save("Informe_" + formData.nroInforme + ".pdf");
-
-    setLoading(false);
-  };
-
-  return (
-    <div className="container">
-
-      <h2>SMI Argentina</h2>
-
-      <input name="cliente" placeholder="Cliente" onChange={handleChange} />
-      <input name="equipo" placeholder="Equipo" onChange={handleChange} />
-      <input name="nroInforme" placeholder="N° Informe" onChange={handleChange} />
-      <input type="date" name="fecha" onChange={handleChange} />
-
-      <input type="file" multiple onChange={handleImages} />
-
-      <div>
-        {images.map((img, i) => (
-          <img key={i} src={img} width="100" />
-        ))}
-      </div>
-
-      <textarea name="observaciones" placeholder="Observaciones" onChange={handleChange}></textarea>
-
-      <h4>Firma</h4>
-      <canvas
-        ref={canvasRef}
-        width={400}
-        height={150}
-        onMouseDown={start}
-        onMouseMove={draw}
-        onMouseUp={stop}
-        onMouseLeave={stop}
-      />
-
-      <button onClick={clear}>Limpiar Firma</button>
-
-      <input name="aclaracion" placeholder="Aclaración" onChange={handleChange} />
-
-      <br/><br/>
-
-      <button onClick={generatePDF}>
-        {loading ? "Generando..." : "Generar PDF"}
-      </button>
-
-    </div>
-  );
+</div>
+);
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 </script>
 
