@@ -1,197 +1,773 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>SMI Argentina</title>
-
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-</head>
-
-<body>
-
-<div id="root"></div>
-
-<script type="text/babel">
-
-const { useState, useRef, useEffect } = React;
-
-const App = () => {
-
-  const [formData, setFormData] = useState({
-    cliente: '',
-    equipo: '',
-    nroInforme: '',
-    fecha: new Date().toISOString().split('T')[0],
-    nroOrden: '',
-    ubicacion: '',
-    observaciones: '',
-    estado: 'APTO',
-    aclaracion: ''
-  });
-
-  const [images, setImages] = useState([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [pdfLibReady, setPdfLibReady] = useState(false);
-
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-
-  useEffect(() => {
-    setPdfLibReady(true);
-  }, []);
-
-  const colors = {
-    primary: '#0056b3',
-    secondary: '#6c757d',
-    success: '#28a745',
-    warning: '#ffc107',
-    danger: '#dc3545',
-    white: '#ffffff'
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    if (images.length + files.length > 4) {
-      alert("Máximo 4 imágenes permitidas");
-      return;
+<!doctype html>
+<html lang="es" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMI Argentina - Informe Fotográfico</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: { DEFAULT: '#1E3A8A', light: '#3B82F6', lighter: '#DBEAFE', surface: '#F3F4F6', muted: '#9CA3AF' }
+      },
+      fontFamily: { body: ['DM Sans', 'sans-serif'] }
     }
-
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImages(prev => [...prev, reader.result]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeImage = (index) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const getCoordinates = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-  };
-
-  const startDrawing = (e) => {
-    const coords = getCoordinates(e);
-    const ctx = canvasRef.current.getContext('2d');
-    ctx.beginPath();
-    ctx.moveTo(coords.x, coords.y);
-    setIsDrawing(true);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-    const coords = getCoordinates(e);
-    const ctx = canvasRef.current.getContext('2d');
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => setIsDrawing(false);
-
-  const clearSignature = () => {
-    const ctx = canvasRef.current.getContext('2d');
-    ctx.clearRect(0, 0, 400, 150);
-  };
-
-  const generatePDF = () => {
-
-    if (!pdfLibReady) return;
-
-    if (!formData.cliente || !formData.equipo || !formData.nroInforme) {
-      alert("Completar campos obligatorios");
-      return;
-    }
-
-    setIsGenerating(true);
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    let y = 20;
-
-    doc.text("SMI Argentina", 15, y);
-    y += 10;
-    doc.text("INFORME FOTOGRAFICO", 105, y, { align: "center" });
-
-    y += 10;
-    doc.text("Cliente: " + formData.cliente, 15, y);
-    y += 5;
-    doc.text("Equipo: " + formData.equipo, 15, y);
-
-    y += 10;
-
-    images.forEach((img) => {
-      doc.addImage(img, "JPEG", 15, y, 80, 50);
-      y += 55;
-    });
-
-    const sign = canvasRef.current.toDataURL("image/png");
-    doc.addImage(sign, "PNG", 15, y, 60, 25);
-
-    doc.save("informe.pdf");
-    setIsGenerating(false);
-  };
-
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-
-      <h1 className="text-2xl font-bold mb-4">SMI Argentina</h1>
-
-      <input name="cliente" placeholder="Cliente" onChange={handleInputChange} className="border p-2 w-full mb-2"/>
-      <input name="equipo" placeholder="Equipo" onChange={handleInputChange} className="border p-2 w-full mb-2"/>
-      <input name="nroInforme" placeholder="Nro Informe" onChange={handleInputChange} className="border p-2 w-full mb-2"/>
-
-      <input type="file" multiple onChange={handleImageUpload} />
-
-      <div className="grid grid-cols-2 gap-2 mt-2">
-        {images.map((img,i)=>(
-          <img key={i} src={img} className="w-full h-32 object-cover"/>
-        ))}
+  }
+}
+</script>
+  <style>
+html, body { height: 100%; margin: 0; font-family: 'DM Sans', sans-serif; }
+.card-block { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04); padding: 1.25rem; margin-bottom: 1rem; }
+.card-title { font-size: 0.95rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+.input-field { width: 100%; border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.875rem; font-family: 'DM Sans', sans-serif; transition: border-color 0.2s, box-shadow 0.2s; background: #fff; color: #1f2937; }
+.input-field:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.input-label { font-size: 0.75rem; font-weight: 600; color: #6B7280; margin-bottom: 0.25rem; display: block; text-transform: uppercase; letter-spacing: 0.03em; }
+.radio-opt { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer; transition: background 0.15s; font-size: 0.875rem; }
+.radio-opt:hover { background: #F3F4F6; }
+.radio-opt input[type="radio"] { accent-color: #1E3A8A; width: 1.1rem; height: 1.1rem; }
+.photo-slot { aspect-ratio: 4/3; border: 2px dashed #D1D5DB; border-radius: 10px; background: #F9FAFB; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; position: relative; transition: border-color 0.2s, background 0.2s; }
+.photo-slot:hover { border-color: #3B82F6; background: #EFF6FF; }
+.photo-slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.photo-slot .remove-btn { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
+.photo-slot:hover .remove-btn { opacity: 1; }
+#signatureCanvas { border: 1.5px solid #D1D5DB; border-radius: 10px; background: #fff; touch-action: none; cursor: crosshair; width: 100%; }
+.btn-primary { background: linear-gradient(135deg, #1E3A8A, #2563EB); color: #fff; border: none; border-radius: 10px; padding: 0.85rem 1.5rem; font-size: 1rem; font-weight: 700; cursor: pointer; width: 100%; letter-spacing: 0.02em; transition: transform 0.1s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(30,58,138,0.25); font-family: 'DM Sans', sans-serif; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30,58,138,0.35); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.btn-secondary { background: #F3F4F6; color: #4B5563; border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 0.45rem 1rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s; }
+.btn-secondary:hover { background: #E5E7EB; }
+.toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(100px); background: #065F46; color: #fff; padding: 0.75rem 1.25rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; z-index: 999; opacity: 0; transition: all 0.35s ease; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { background: #991B1B; }
+.loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 998; backdrop-filter: blur(2px); }
+.spinner { width: 40px; height: 40px; border: 3.5px solid #DBEAFE; border-top-color: #1E3A8A; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.card-block { animation: fadeInUp 0.35s ease both; }
+.card-block:nth-child(2) { animation-delay: 0.05s; }
+.card-block:nth-child(3) { animation-delay: 0.1s; }
+.card-block:nth-child(4) { animation-delay: 0.15s; }
+.card-block:nth-child(5) { animation-delay: 0.2s; }
+.card-block:nth-child(6) { animation-delay: 0.25s; }
+.card-block:nth-child(7) { animation-delay: 0.3s; }
+textarea.input-field { resize: vertical; min-height: 80px; }
+.saved-item { padding: 0.65rem 0.85rem; border-radius: 8px; background: #F9FAFB; border: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.5rem; transition: background 0.15s; }
+.saved-item:hover { background: #EFF6FF; }
+</style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full bg-brand-surface">
+  <div id="app" class="h-full overflow-auto w-full">
+   <!-- Header -->
+   <header id="appHeader" class="bg-white sticky top-0 z-50" style="box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+     <div class="flex items-center gap-3">
+      <svg width="48" height="48" viewbox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><!-- Shield Background --> <defs>
+        <lineargradient id="shieldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+         <stop offset="0%" style="stop-color:#1E3A8A;stop-opacity:1" />
+         <stop offset="100%" style="stop-color:#2563EB;stop-opacity:1" />
+        </lineargradient>
+       </defs> <path d="M 50 10 L 80 25 L 80 50 C 80 75 50 90 50 90 C 50 90 20 75 20 50 L 20 25 Z" fill="url(#shieldGradient)" stroke="#1E3A8A" stroke-width="1.5" /> <!-- Inner Shield --> <path d="M 50 18 L 75 30 L 75 50 C 75 70 50 82 50 82 C 50 82 25 70 25 50 L 25 30 Z" fill="#DBEAFE" opacity="0.15" /> <!-- SMI Text --> <text x="50" y="48" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="800" font-family="DM Sans,sans-serif" letter-spacing="-1">
+        SMI
+       </text> <!-- Checkmark --> <path d="M 38 55 L 45 62 L 58 48" stroke="#3B82F6" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <div>
+       <div id="headerTitle" class="text-brand font-bold text-sm leading-tight">
+        SMI ARGENTINA
+       </div>
+       <div class="text-brand-muted text-xs">
+        Informe Fotográfico
+       </div>
       </div>
-
-      <textarea name="observaciones" onChange={handleInputChange} className="border w-full mt-4 p-2"/>
-
-      <canvas
-        ref={canvasRef}
-        width={400}
-        height={150}
-        className="border mt-4"
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={stopDrawing}
-      />
-
-      <button onClick={clearSignature} className="mt-2">Limpiar firma</button>
-
-      <button onClick={generatePDF} className="bg-blue-600 text-white p-3 mt-4 w-full">
-        Generar PDF
-      </button>
-
+     </div>
+     <div class="ml-auto flex gap-2">
+      <button onclick="showTab('form')" id="tabForm" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white transition-all">Nuevo</button> <button onclick="showTab('history')" id="tabHistory" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-surface text-brand-muted transition-all">Historial</button>
+     </div>
     </div>
-  );
+   </header><!-- Loading Overlay -->
+   <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+    <div class="spinner"></div>
+    <p class="mt-3 text-brand font-semibold text-sm">Generando PDF...</p>
+   </div><!-- Toast -->
+   <div id="toast" class="toast"></div><!-- FORM TAB -->
+   <div id="formTab" class="max-w-2xl mx-auto px-4 py-4 pb-8">
+    <!-- Block 1: Report Data -->
+    <div class="card-block">
+     <div class="card-title"><i data-lucide="file-text" style="width:18px;height:18px;color:#1E3A8A;"></i> <span id="blockTitle1">Datos del Informe</span>
+     </div>
+     <div class="grid grid-cols-2 gap-3">
+      <div><label class="input-label">Nº Informe</label><input type="text" id="reportNumber" class="input-field" placeholder="INF-001">
+      </div>
+      <div><label class="input-label">Fecha</label><input type="date" id="reportDate" class="input-field">
+      </div>
+      <div><label class="input-label">Cliente</label><input type="text" id="client" class="input-field" placeholder="Nombre del cliente">
+      </div>
+      <div><label class="input-label">Ubicación</label><input type="text" id="location" class="input-field" placeholder="Dirección o sitio">
+      </div>
+      <div><label class="input-label">Equipo</label><input type="text" id="equipment" class="input-field" placeholder="Tipo de equipo">
+      </div>
+      <div><label class="input-label">Modelo / Serie</label><input type="text" id="model" class="input-field" placeholder="Modelo">
+      </div>
+     </div>
+    </div><!-- Block 2: Equipment Status -->
+    <div class="card-block">
+     <div class="card-title"><i data-lucide="activity" style="width:18px;height:18px;color:#1E3A8A;"></i> Estado del Equipo
+     </div>
+     <div class="grid grid-cols-1 sm:grid-cols-2 gap-1">
+      <label class="radio-opt"><input type="radio" name="status" value="Operativo"> Operativo</label> <label class="radio-opt"><input type="radio" name="status" value="En mantenimiento"> En mantenimiento</label> <label class="radio-opt"><input type="radio" name="status" value="Fuera de servicio"> Fuera de servicio</label> <label class="radio-opt"><input type="radio" name="status" value="Requiere reparación" checked> Requiere reparación</label>
+     </div>
+    </div><!-- Block 3: Photos -->
+    <div class="card-block">
+     <div class="card-title"><i data-lucide="camera" style="width:18px;height:18px;color:#1E3A8A;"></i> Registro Fotográfico
+     </div>
+     <div class="grid grid-cols-2 gap-3" id="photoGrid">
+      <div class="photo-slot" onclick="triggerPhoto(0)">
+       <i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 1</span>
+      </div>
+      <div class="photo-slot" onclick="triggerPhoto(1)">
+       <i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 2</span>
+      </div>
+      <div class="photo-slot" onclick="triggerPhoto(2)">
+       <i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 3</span>
+      </div>
+      <div class="photo-slot" onclick="triggerPhoto(3)">
+       <i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 4</span>
+      </div>
+     </div><input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhoto(event)">
+    </div><!-- Block 4: Observations -->
+    <div class="card-block">
+     <div class="card-title"><i data-lucide="message-square" style="width:18px;height:18px;color:#1E3A8A;"></i> Observaciones
+     </div><textarea id="observations" class="input-field" rows="4" placeholder="Detalle las observaciones del relevamiento..."></textarea>
+    </div><!-- Block 5: Signature -->
+    <div class="card-block">
+     <div class="card-title"><i data-lucide="pen-tool" style="width:18px;height:18px;color:#1E3A8A;"></i> Firma Técnico Responsable
+     </div>
+     <canvas id="signatureCanvas" height="160"></canvas>
+     <div class="flex items-center justify-between mt-2">
+      <button class="btn-secondary" onclick="clearSignature()"><i data-lucide="eraser" style="width:14px;height:14px;display:inline;vertical-align:-2px;"></i> Limpiar firma</button>
+     </div>
+     <div class="mt-3">
+      <label class="input-label">Aclaración</label> <input type="text" id="signatureName" class="input-field" placeholder="Nombre y apellido">
+     </div>
+    </div><!-- Block 6: Generate -->
+    <div class="card-block" style="background: linear-gradient(135deg, #EFF6FF, #DBEAFE); border: 1.5px solid #BFDBFE;">
+     <button class="btn-primary" id="generateBtn" onclick="generatePDF()"> <i data-lucide="file-down" style="width:20px;height:20px;display:inline;vertical-align:-4px;margin-right:6px;"></i> GENERAR PDF </button>
+    </div>
+   </div><!-- HISTORY TAB -->
+   <div id="historyTab" class="max-w-2xl mx-auto px-4 py-4 pb-8" style="display:none;">
+    <div class="card-block">
+     <div class="card-title"><i data-lucide="clock" style="width:18px;height:18px;color:#1E3A8A;"></i> Informes Guardados
+     </div>
+     <div id="historyList">
+      <p class="text-brand-muted text-sm text-center py-4">No hay informes guardados aún.</p>
+     </div>
+     <p id="recordCount" class="text-xs text-brand-muted mt-2 text-right"></p>
+    </div>
+   </div>
+  </div>
+  <script>
+// State
+let photos = [null, null, null, null];
+let currentPhotoIndex = 0;
+let isDrawing = false;
+let savedReports = [];
+let signatureHasContent = false;
+
+// Config / defaults
+const defaultConfig = {
+  company_name: 'SMI ARGENTINA',
+  footer_text: 'Venezuela 4109 – Vicente Lopez – CP: 1603 - Villa Martelli – www.smiargentina.com',
+  background_color: '#F3F4F6',
+  surface_color: '#FFFFFF',
+  text_color: '#1F2937',
+  primary_action_color: '#1E3A8A',
+  secondary_action_color: '#3B82F6'
 };
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+// Element SDK
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => {
+    const bg = config.background_color || defaultConfig.background_color;
+    const surface = config.surface_color || defaultConfig.surface_color;
+    const text = config.text_color || defaultConfig.text_color;
+    const primary = config.primary_action_color || defaultConfig.primary_action_color;
+    const secondary = config.secondary_action_color || defaultConfig.secondary_action_color;
+    const company = config.company_name || defaultConfig.company_name;
 
+    document.getElementById('app').style.backgroundColor = bg;
+    document.querySelectorAll('.card-block').forEach(c => c.style.backgroundColor = surface);
+    document.querySelectorAll('.card-title').forEach(t => t.style.color = primary);
+    document.querySelectorAll('.input-field').forEach(i => i.style.color = text);
+    document.getElementById('headerTitle').textContent = company;
+
+    const btn = document.getElementById('generateBtn');
+    if (btn) btn.style.background = `linear-gradient(135deg, ${primary}, ${secondary})`;
+  },
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+      { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+      { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+      { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: v => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+      { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: v => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } }
+    ],
+    borderables: [],
+    fontEditable: {
+      get: () => config.font_family || defaultConfig.font_family || 'DM Sans',
+      set: v => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+    },
+    fontSizeable: undefined
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ['company_name', config.company_name || defaultConfig.company_name],
+    ['footer_text', config.footer_text || defaultConfig.footer_text]
+  ])
+});
+
+// Data SDK
+const dataHandler = {
+  onDataChanged(data) {
+    savedReports = data;
+    renderHistory();
+  }
+};
+(async () => {
+  const r = await window.dataSdk.init(dataHandler);
+  if (!r.isOk) console.error('Data SDK init failed');
+})();
+
+// Tabs
+function showTab(tab) {
+  const formTab = document.getElementById('formTab');
+  const historyTab = document.getElementById('historyTab');
+  const tabForm = document.getElementById('tabForm');
+  const tabHistory = document.getElementById('tabHistory');
+  if (tab === 'form') {
+    formTab.style.display = '';
+    historyTab.style.display = 'none';
+    tabForm.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white transition-all';
+    tabHistory.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-surface text-brand-muted transition-all';
+  } else {
+    formTab.style.display = 'none';
+    historyTab.style.display = '';
+    tabHistory.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white transition-all';
+    tabForm.className = 'text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-surface text-brand-muted transition-all';
+  }
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const countEl = document.getElementById('recordCount');
+  if (!savedReports.length) {
+    list.innerHTML = '<p class="text-brand-muted text-sm text-center py-4">No hay informes guardados aún.</p>';
+    countEl.textContent = '';
+    return;
+  }
+  countEl.textContent = `${savedReports.length} / 999 informes`;
+
+  const existing = new Map([...list.querySelectorAll('.saved-item')].map(el => [el.dataset.rid, el]));
+  const fragment = document.createDocumentFragment();
+
+  savedReports.forEach(report => {
+    const id = report.__backendId;
+    if (existing.has(id)) {
+      const el = existing.get(id);
+      el.querySelector('.ri-label').textContent = `${report.report_number || 'Sin número'} — ${report.client || 'Sin cliente'}`;
+      el.querySelector('.ri-date').textContent = report.date || '';
+      existing.delete(id);
+    } else {
+      const div = document.createElement('div');
+      div.className = 'saved-item';
+      div.dataset.rid = id;
+      div.innerHTML = `
+        <div>
+          <div class="ri-label font-semibold text-brand">${report.report_number || 'Sin número'} — ${report.client || 'Sin cliente'}</div>
+          <div class="ri-date text-xs text-brand-muted">${report.date || ''}</div>
+        </div>
+        <button class="btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.75rem;" onclick="deleteReport('${id}')">
+          <i data-lucide="trash-2" style="width:13px;height:13px;display:inline;vertical-align:-2px;"></i>
+        </button>`;
+      fragment.appendChild(div);
+    }
+  });
+
+  existing.forEach(el => el.remove());
+  list.appendChild(fragment);
+  lucide.createIcons();
+}
+
+async function deleteReport(id) {
+  const report = savedReports.find(r => r.__backendId === id);
+  if (!report) return;
+  const btn = document.querySelector(`[data-rid="${id}"] button`);
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  const r = await window.dataSdk.delete(report);
+  if (!r.isOk) { showToast('Error al eliminar', true); if (btn) { btn.disabled = false; btn.textContent = '🗑'; } }
+}
+
+// Photos
+function triggerPhoto(index) {
+  currentPhotoIndex = index;
+  document.getElementById('photoInput').click();
+}
+
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    photos[currentPhotoIndex] = ev.target.result;
+    renderPhotoSlot(currentPhotoIndex);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function renderPhotoSlot(index) {
+  const grid = document.getElementById('photoGrid');
+  const slot = grid.children[index];
+  if (photos[index]) {
+    slot.innerHTML = `<img src="${photos[index]}" alt="Foto ${index+1}"><button class="remove-btn" onclick="event.stopPropagation();removePhoto(${index})">×</button>`;
+  } else {
+    slot.innerHTML = `<i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i><span class="text-xs text-brand-muted mt-1">Foto ${index+1}</span>`;
+    lucide.createIcons();
+  }
+}
+
+function removePhoto(index) {
+  photos[index] = null;
+  renderPhotoSlot(index);
+}
+
+// Signature
+const canvas = document.getElementById('signatureCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = 160;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+}
+
+canvas.addEventListener('mousedown', e => { isDrawing = true; signatureHasContent = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+canvas.addEventListener('mousemove', e => { if (!isDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#1E3A8A'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke(); });
+canvas.addEventListener('mouseup', () => isDrawing = false);
+canvas.addEventListener('mouseleave', () => isDrawing = false);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); isDrawing = true; signatureHasContent = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!isDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#1E3A8A'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke(); }, { passive: false });
+canvas.addEventListener('touchend', () => isDrawing = false);
+
+function clearSignature() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  signatureHasContent = false;
+}
+
+// Toast
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Helper: Draw section header with line
+function drawSectionHeader(doc, title, y, W, M, cw) {
+  doc.setTextColor(30, 58, 138);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(title, M, y);
+  doc.setDrawColor(59, 130, 246);
+  doc.setLineWidth(0.4);
+  doc.line(M, y + 2, W - M, y + 2);
+  return y + 8;
+}
+
+// Helper: Get status badge color
+function getStatusColor(status) {
+  if (status.includes('APTO') && !status.includes('NO')) {
+    if (status.includes('CONDICIONES')) return { bg: [255, 193, 7], text: [0, 0, 0] }; // Amarillo
+    return { bg: [34, 197, 94], text: [255, 255, 255] }; // Verde
+  }
+  return { bg: [239, 68, 68], text: [255, 255, 255] }; // Rojo
+}
+
+// PDF Generation
+async function generatePDF() {
+  const btn = document.getElementById('generateBtn');
+  const overlay = document.getElementById('loadingOverlay');
+  btn.disabled = true;
+  overlay.style.display = 'flex';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const W = 210, H = 297, M = 12;
+    const cw = W - M * 2;
+
+    // Gather data
+    const reportNumber = document.getElementById('reportNumber').value || 'SIN NÚMERO';
+    const reportDate = document.getElementById('reportDate').value || '';
+    const client = document.getElementById('client').value || 'NO ESPECIFICADO';
+    const location = document.getElementById('location').value || '';
+    const equipmentVal = document.getElementById('equipment').value || '';
+    const modelVal = document.getElementById('model').value || '';
+    const statusEl = document.querySelector('input[name="status"]:checked');
+    const status = statusEl ? statusEl.value : 'NO ESPECIFICADO';
+    const obs = document.getElementById('observations').value || 'Sin observaciones.';
+    const sigName = document.getElementById('signatureName').value || '';
+    const config = window.elementSdk.config || {};
+    const footer = config.footer_text || defaultConfig.footer_text;
+
+    let y = M;
+
+    // ===== PAGE 1: HEADER & DATA =====
+    // Professional Header with blue background
+    doc.setFillColor(30, 58, 138);
+    doc.rect(0, 0, W, 32, 'F');
+
+    // Logo area + company info
+    // Create SMI logo (shield-like design)
+    doc.setFillColor(59, 130, 246);
+    doc.roundedRect(M - 0.5, 1, 10, 10, 1, 1, 'F');
+    
+    doc.setTextColor(30, 58, 138);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SMI', M + 1.5, 6.5, { align: 'center' });
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SMI ARGENTINA', M + 12, 10);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Razón Social: Ruben Horacio Llorens', M + 12, 16);
+    doc.text('CUIT: 20-22167232-2', M + 12, 20);
+    doc.text('Servicios de Inspección Técnica', M + 12, 24);
+
+    // Blue accent line
+    doc.setFillColor(59, 130, 246);
+    doc.rect(0, 28, W, 2, 'F');
+
+    y = 38;
+
+    // Main title
+    doc.setTextColor(30, 58, 138);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INFORME FOTOGRÁFICO', W / 2, y, { align: 'center' });
+    y += 10;
+
+    // Sub-header info (Nro, Tipo, Fecha) in a light box
+    doc.setFillColor(237, 246, 255);
+    doc.rect(M, y - 4, cw, 12, 'F');
+    doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.3);
+    doc.rect(M, y - 4, cw, 12, 'S');
+
+    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    const subH = y + 2;
+    doc.text(`Nº Informe: ${reportNumber}`, M + 4, subH);
+    doc.text(`Tipo: Fotográfico`, M + 80, subH);
+    doc.text(`Fecha: ${reportDate}`, M + 140, subH);
+    y += 16;
+
+    // ===== DATA SECTION =====
+    y = drawSectionHeader(doc, 'DATOS DEL INFORME', y, W, M, cw);
+
+    // 2-column layout for data fields
+    const colW = (cw - 4) / 2;
+    let row1Y = y;
+
+    const fields1 = ['Cliente', 'Equipo'];
+    const vals1 = [client, equipmentVal];
+    const fields2 = ['Ubicación', 'Modelo'];
+    const vals2 = [location, modelVal];
+
+    // Row 1
+    doc.setFillColor(249, 250, 251);
+    doc.rect(M, row1Y - 3, colW, 11, 'F');
+    doc.setDrawColor(229, 231, 235);
+    doc.setLineWidth(0.2);
+    doc.rect(M, row1Y - 3, colW, 11, 'S');
+
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text(fields1[0], M + 2, row1Y - 0.5);
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vals1[0], M + 2, row1Y + 3);
+
+    // Row 1 - Col 2
+    doc.setFillColor(249, 250, 251);
+    doc.rect(M + colW + 4, row1Y - 3, colW, 11, 'F');
+    doc.setDrawColor(229, 231, 235);
+    doc.rect(M + colW + 4, row1Y - 3, colW, 11, 'S');
+
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text(fields1[1], M + colW + 6, row1Y - 0.5);
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vals1[1], M + colW + 6, row1Y + 3);
+
+    y = row1Y + 15;
+
+    // Row 2
+    let row2Y = y;
+    doc.setFillColor(249, 250, 251);
+    doc.rect(M, row2Y - 3, colW, 11, 'F');
+    doc.setDrawColor(229, 231, 235);
+    doc.rect(M, row2Y - 3, colW, 11, 'S');
+
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text(fields2[0], M + 2, row2Y - 0.5);
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vals2[0], M + 2, row2Y + 3);
+
+    // Row 2 - Col 2
+    doc.setFillColor(249, 250, 251);
+    doc.rect(M + colW + 4, row2Y - 3, colW, 11, 'F');
+    doc.setDrawColor(229, 231, 235);
+    doc.rect(M + colW + 4, row2Y - 3, colW, 11, 'S');
+
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text(fields2[1], M + colW + 6, row2Y - 0.5);
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vals2[1], M + colW + 6, row2Y + 3);
+
+    y = row2Y + 15;
+
+    // ===== STATUS BADGE =====
+    y = drawSectionHeader(doc, 'ESTADO DEL EQUIPO', y, W, M, cw);
+
+    const { bg, text } = getStatusColor(status);
+    doc.setFillColor(bg[0], bg[1], bg[2]);
+    doc.roundedRect(M, y - 4, 60, 12, 3, 3, 'F');
+
+    doc.setTextColor(text[0], text[1], text[2]);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(status.toUpperCase(), M + 30, y + 3, { align: 'center' });
+
+    y += 16;
+
+    // ===== PHOTOS SECTION =====
+    y = drawSectionHeader(doc, 'REGISTRO FOTOGRÁFICO', y, W, M, cw);
+
+    const photoW = (cw - 6) / 2;
+    const photoH = 45;
+    const hasAnyPhoto = photos.some(p => p);
+
+    if (hasAnyPhoto) {
+      for (let i = 0; i < 4; i++) {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const px = M + col * (photoW + 6);
+        const py = y + row * (photoH + 6);
+
+        // Photo frame
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.4);
+        doc.rect(px, py, photoW, photoH, 'S');
+
+        if (photos[i]) {
+          try {
+            doc.addImage(photos[i], 'JPEG', px + 0.5, py + 0.5, photoW - 1, photoH - 1);
+          } catch (e) {
+            doc.setFillColor(249, 250, 251);
+            doc.rect(px + 0.5, py + 0.5, photoW - 1, photoH - 1, 'F');
+            doc.setTextColor(180, 180, 180);
+            doc.setFontSize(8);
+            doc.text('Error cargando foto', px + photoW / 2, py + photoH / 2, { align: 'center' });
+          }
+        } else {
+          doc.setFillColor(249, 250, 251);
+          doc.rect(px + 0.5, py + 0.5, photoW - 1, photoH - 1, 'F');
+          doc.setTextColor(180, 180, 180);
+          doc.setFontSize(8);
+          doc.text('Sin foto', px + photoW / 2, py + photoH / 2, { align: 'center' });
+        }
+      }
+      y += photoH * 2 + 12;
+    } else {
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'italic');
+      doc.text('No se adjuntaron fotografías.', M, y + 4);
+      y += 12;
+    }
+
+    // ===== PAGE BREAK IF NEEDED =====
+    if (y > 210) {
+      doc.addPage();
+      y = M;
+    }
+
+    // ===== OBSERVATIONS =====
+    y = drawSectionHeader(doc, 'OBSERVACIONES', y, W, M, cw);
+
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+    doc.rect(M, y - 4, cw, 35, 'S');
+
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const obsLines = doc.splitTextToSize(obs, cw - 4);
+    doc.text(obsLines, M + 2, y, { maxWidth: cw - 4 });
+
+    y += 42;
+
+    // ===== PAGE BREAK IF NEEDED =====
+    if (y > 220) {
+      doc.addPage();
+      y = M;
+    }
+
+    // ===== SIGNATURE SECTION =====
+    y = drawSectionHeader(doc, 'FIRMA TÉCNICO RESPONSABLE', y, W, M, cw);
+
+    // Signature box
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.4);
+    doc.rect(M, y - 2, 70, 30, 'S');
+
+    if (signatureHasContent) {
+      try {
+        const sigData = canvas.toDataURL('image/png');
+        doc.addImage(sigData, 'PNG', M + 1, y - 1, 68, 28);
+      } catch (e) {
+        doc.setTextColor(180, 180, 180);
+        doc.setFontSize(8);
+        doc.text('Sin firma', M + 35, y + 14, { align: 'center' });
+      }
+    } else {
+      doc.setTextColor(180, 180, 180);
+      doc.setFontSize(8);
+      doc.text('Sin firma', M + 35, y + 14, { align: 'center' });
+    }
+
+    y += 32;
+
+    // Signature line
+    doc.setDrawColor(30, 58, 138);
+    doc.setLineWidth(0.5);
+    doc.line(M, y, M + 70, y);
+
+    y += 4;
+
+    // Aclaración text
+    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(sigName || '[Firma del técnico]', M, y);
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    doc.text('Firma Técnico Responsable', M, y + 4);
+
+    y += 10;
+
+    // ===== LEGAL NOTICE =====
+    if (y > 260) {
+      doc.addPage();
+      y = M;
+    }
+
+    doc.setFillColor(242, 242, 242);
+    doc.rect(M, y - 2, cw, 16, 'F');
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+    doc.rect(M, y - 2, cw, 16, 'S');
+
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    const legalText = 'AVISO: Documento de carácter fotográfico informativo. No sustituye las certificaciones de seguridad ni las habilitaciones oficiales requeridas por los organismos reguladores.';
+    const legalLines = doc.splitTextToSize(legalText, cw - 4);
+    doc.text(legalLines, M + 2, y + 1);
+
+    // ===== FOOTER =====
+    doc.setFillColor(30, 58, 138);
+    doc.rect(0, H - 12, W, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text(footer, W / 2, H - 4, { align: 'center' });
+
+    // Save PDF
+    doc.save(`Informe_${reportNumber.replace(/\//g, '-')}_${reportDate}.pdf`);
+
+    // Persist to Data SDK
+    if (savedReports.length >= 999) {
+      showToast('Límite de 999 informes alcanzado', true);
+    } else {
+      const result = await window.dataSdk.create({
+        report_number: reportNumber,
+        date: reportDate,
+        client: client,
+        location: location,
+        equipment: equipmentVal,
+        model: modelVal,
+        equipment_status: status,
+        observations: obs.substring(0, 200),
+        signature_name: sigName,
+        created_at: new Date().toISOString()
+      });
+      if (!result.isOk) {
+        showToast('PDF generado, pero error al guardar registro', true);
+      }
+    }
+
+    showToast('✓ PDF generado exitosamente');
+  } catch (err) {
+    console.error(err);
+    showToast('Error al generar PDF', true);
+  } finally {
+    btn.disabled = false;
+    overlay.style.display = 'none';
+  }
+}
+
+// Set today's date
+document.getElementById('reportDate').valueAsDate = new Date();
+
+// Init icons
+lucide.createIcons();
 </script>
-
-</body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e278e2140090c34',t:'MTc3NDU0Mjc4Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
