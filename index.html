@@ -2,71 +2,88 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>SMI Argentina</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMI Argentina - Informes</title>
 
+<!-- React -->
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
+
+/* =========================
+   RESET
+========================= */
 body {
-  font-family: Arial;
+  margin: 0;
+  font-family: Arial, sans-serif;
   background: #f3f4f6;
 }
 
+/* =========================
+   CONTENEDOR
+========================= */
 .container {
-  max-width: 900px;
+  max-width: 1000px;
   margin: auto;
-  background: white;
   padding: 20px;
-  border-radius: 12px;
 }
 
-h2 {
-  color: #0056b3;
+/* =========================
+   HEADER
+========================= */
+.header {
+  background: #0056b3;
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
 }
 
+/* =========================
+   SECCIONES
+========================= */
 .section {
+  background: white;
   border: 1px solid #ddd;
   border-radius: 10px;
   padding: 15px;
   margin-bottom: 20px;
 }
 
+.section h3 {
+  margin-top: 0;
+  color: #0056b3;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
+
+/* =========================
+   GRID
+========================= */
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
+/* =========================
+   INPUTS
+========================= */
 input, textarea {
   width: 100%;
   padding: 8px;
-  border: 1px solid #ccc;
   border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
-.images {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.img-box {
-  border: 2px dashed #ccc;
-  height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.img-box img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
+/* =========================
+   ESTADO
+========================= */
 .status button {
   margin: 5px;
   padding: 10px;
@@ -80,19 +97,50 @@ input, textarea {
   color: white;
 }
 
+/* =========================
+   IMAGENES
+========================= */
+.images {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 10px;
+}
+
+.img-box {
+  height: 120px;
+  border: 2px dashed #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* =========================
+   FIRMA
+========================= */
 canvas {
   border: 1px solid #ccc;
 }
 
-.main-btn {
+/* =========================
+   BOTON
+========================= */
+.btn {
   width: 100%;
   padding: 15px;
   background: #0056b3;
   color: white;
-  font-size: 18px;
   border: none;
   border-radius: 10px;
+  font-size: 18px;
+  cursor: pointer;
 }
+
 </style>
 </head>
 
@@ -122,20 +170,33 @@ const [form, setForm] = useState({
 
 const [images,setImages]=useState([]);
 
+/* =========================
+   HANDLERS
+========================= */
+
 const handleChange=e=>{
   setForm({...form,[e.target.name]:e.target.value});
 };
 
-const uploadImg=e=>{
+const uploadImages=e=>{
   const files=Array.from(e.target.files);
+
+  if(images.length + files.length > 4){
+    alert("Maximo 4 imagenes");
+    return;
+  }
+
   files.forEach(f=>{
     const r=new FileReader();
-    r.onloadend=()=>setImages(p=>[...p,r.result]);
+    r.onloadend=()=>setImages(prev=>[...prev,r.result]);
     r.readAsDataURL(f);
   });
 };
 
-// FIRMA
+/* =========================
+   FIRMA
+========================= */
+
 let drawing=false;
 
 const start=e=>{
@@ -154,71 +215,106 @@ const draw=e=>{
 
 const stop=()=>drawing=false;
 
-const clear=()=>{
+const clearSignature=()=>{
   const ctx=canvasRef.current.getContext("2d");
   ctx.clearRect(0,0,400,150);
 };
 
-// PDF
+/* =========================
+   PDF PROFESIONAL
+========================= */
+
 const generatePDF=()=>{
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
 
-  let y=20;
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
 
-  doc.setTextColor(0,0,150);
-  doc.setFontSize(16);
-  doc.text("SMI Argentina",15,y);
+const pageWidth = doc.internal.pageSize.getWidth();
+const margin = 15;
+let y = 20;
 
-  y+=6;
-  doc.setFontSize(10);
-  doc.setTextColor(0,0,0);
-  doc.text("Razon Social: Ruben Horacio Llorens",15,y);
-  y+=4;
-  doc.text("CUIT: 20-22167232-2",15,y);
+const azul=[0,86,179];
+const gris=[120,120,120];
 
-  y+=10;
-  doc.setFontSize(18);
-  doc.text("INFORME FOTOGRAFICO",105,y,{align:"center"});
+doc.setFont("helvetica","bold");
+doc.setFontSize(16);
+doc.setTextColor(...azul);
+doc.text("SMI Argentina",margin,y);
 
-  y+=10;
-  doc.setFontSize(10);
-  doc.text("Cliente: "+form.cliente,15,y);
-  y+=5;
-  doc.text("Equipo: "+form.equipo,15,y);
-  y+=5;
-  doc.text("Ubicación: "+form.ubicacion,15,y);
+doc.setFontSize(9);
+doc.setTextColor(0,0,0);
+y+=6;
+doc.text("Razon Social: Ruben Horacio Llorens",margin,y);
+y+=4;
+doc.text("CUIT: 20-22167232-2",margin,y);
 
-  y+=10;
-  doc.setTextColor(0,0,150);
-  doc.text("ESTADO: "+form.estado,15,y);
+y+=5;
+doc.setDrawColor(...azul);
+doc.line(margin,y,pageWidth-margin,y);
 
-  y+=10;
+y+=12;
+doc.setFontSize(18);
+doc.text("INFORME FOTOGRAFICO",pageWidth/2,y,{align:"center"});
 
-  images.forEach((img,i)=>{
-    doc.addImage(img,"JPEG",15,y,80,50);
-    y+=55;
-  });
+y+=10;
+doc.rect(margin,y,pageWidth-(margin*2),15);
 
-  doc.setTextColor(0,0,0);
-  doc.text("Observaciones:",15,y);
-  y+=5;
-  doc.text(form.observaciones||"-",15,y);
+doc.text("Nro Informe: "+form.nroInforme,margin+5,y+6);
+doc.text("Fecha: "+form.fecha,pageWidth/2,y+6);
 
-  y+=20;
-  const sign=canvasRef.current.toDataURL();
-  doc.addImage(sign,"PNG",15,y,60,25);
+y+=25;
 
-  y+=30;
-  doc.text("Aclaración: "+form.aclaracion,15,y);
+doc.text("Cliente: "+form.cliente,margin,y);
+y+=6;
+doc.text("Equipo: "+form.equipo,margin,y);
+y+=6;
+doc.text("Ubicacion: "+form.ubicacion,margin,y);
 
-  doc.save("Informe_"+form.nroInforme+".pdf");
+y+=10;
+
+doc.setTextColor(...azul);
+doc.text("Estado: "+form.estado,margin,y);
+
+y+=10;
+
+images.forEach((img,i)=>{
+  const row=Math.floor(i/2);
+  const col=i%2;
+  const x=margin + col*90;
+  const yImg=y + row*70;
+  doc.addImage(img,"JPEG",x,yImg,80,60);
+  doc.rect(x,yImg,80,60);
+});
+
+y+=150;
+
+doc.setTextColor(0,0,0);
+doc.text("Observaciones:",margin,y);
+y+=5;
+doc.text(form.observaciones || "-",margin,y);
+
+y+=20;
+
+const sign=canvasRef.current.toDataURL("image/png");
+doc.addImage(sign,"PNG",margin,y,60,25);
+
+y+=30;
+doc.text("Aclaracion: "+form.aclaracion,margin,y);
+
+doc.save("Informe_"+form.nroInforme+".pdf");
 };
+
+/* =========================
+   RENDER
+========================= */
 
 return(
 <div className="container">
 
+<div className="header">
 <h2>SMI Argentina</h2>
+<p>Informe Fotografico</p>
+</div>
 
 <div className="section">
 <h3>Datos</h3>
@@ -228,7 +324,7 @@ return(
 <input name="nroInforme" placeholder="Nro Informe" onChange={handleChange}/>
 <input type="date" name="fecha" onChange={handleChange}/>
 <input name="nroOrden" placeholder="Nro Orden" onChange={handleChange}/>
-<input name="ubicacion" placeholder="Ubicación" onChange={handleChange}/>
+<input name="ubicacion" placeholder="Ubicacion" onChange={handleChange}/>
 </div>
 </div>
 
@@ -246,8 +342,8 @@ onClick={()=>setForm({...form,estado:s})}
 </div>
 
 <div className="section">
-<h3>Imágenes</h3>
-<input type="file" multiple onChange={uploadImg}/>
+<h3>Imagenes</h3>
+<input type="file" multiple onChange={uploadImages}/>
 <div className="images">
 {images.map((img,i)=>(
 <div className="img-box">
@@ -274,11 +370,11 @@ onMouseUp={stop}
 onMouseLeave={stop}
 />
 <br/>
-<button onClick={clear}>Limpiar</button>
-<input name="aclaracion" placeholder="Aclaración" onChange={handleChange}/>
+<button onClick={clearSignature}>Limpiar firma</button>
+<input name="aclaracion" placeholder="Aclaracion" onChange={handleChange}/>
 </div>
 
-<button className="main-btn" onClick={generatePDF}>
+<button className="btn" onClick={generatePDF}>
 GENERAR PDF
 </button>
 
