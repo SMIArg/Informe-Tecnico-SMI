@@ -65,20 +65,13 @@ textarea.input-field { resize: vertical; min-height: 80px; }
   <style>body { box-sizing: border-box; }</style>
  </head>
  <body class="h-full bg-brand-surface">
-  <div id="app" class="h-full overflow-auto w-full">
-   <!-- Header -->
+  <div id="app" class="h-full overflow-auto w-full"><!-- Header -->
    <header id="appHeader" class="bg-white sticky top-0 z-50" style="box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
     <div class="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
      <div class="flex items-center gap-3">
-      <svg width="48" height="48" viewbox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><!-- Shield Background --> <defs>
-        <lineargradient id="shieldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-         <stop offset="0%" style="stop-color:#1E3A8A;stop-opacity:1" />
-         <stop offset="100%" style="stop-color:#2563EB;stop-opacity:1" />
-        </lineargradient>
-       </defs> <path d="M 50 10 L 80 25 L 80 50 C 80 75 50 90 50 90 C 50 90 20 75 20 50 L 20 25 Z" fill="url(#shieldGradient)" stroke="#1E3A8A" stroke-width="1.5" /> <!-- Inner Shield --> <path d="M 50 18 L 75 30 L 75 50 C 75 70 50 82 50 82 C 50 82 25 70 25 50 L 25 30 Z" fill="#DBEAFE" opacity="0.15" /> <!-- SMI Text --> <text x="50" y="48" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="800" font-family="DM Sans,sans-serif" letter-spacing="-1">
-        SMI
-       </text> <!-- Checkmark --> <path d="M 38 55 L 45 62 L 58 48" stroke="#3B82F6" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      <div style="width:48px;height:48px;background:linear-gradient(135deg,#1E3A8A,#2563EB);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:18px;font-family:DM Sans,sans-serif;">
+       SMI
+      </div>
       <div>
        <div id="headerTitle" class="text-brand font-bold text-sm leading-tight">
         SMI ARGENTINA
@@ -88,8 +81,7 @@ textarea.input-field { resize: vertical; min-height: 80px; }
        </div>
       </div>
      </div>
-     <div class="ml-auto flex gap-2">
-      <button onclick="showTab('form')" id="tabForm" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white transition-all">Nuevo</button> <button onclick="showTab('history')" id="tabHistory" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-surface text-brand-muted transition-all">Historial</button>
+     <div class="ml-auto flex gap-2"><button onclick="showTab('form')" id="tabForm" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand text-white transition-all">Nuevo</button> <button onclick="showTab('history')" id="tabHistory" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-surface text-brand-muted transition-all">Historial</button>
      </div>
     </div>
    </header><!-- Loading Overlay -->
@@ -98,73 +90,76 @@ textarea.input-field { resize: vertical; min-height: 80px; }
     <p class="mt-3 text-brand font-semibold text-sm">Generando PDF...</p>
    </div><!-- Toast -->
    <div id="toast" class="toast"></div><!-- FORM TAB -->
-   <div id="formTab" class="max-w-2xl mx-auto px-4 py-4 pb-8">
-    <!-- Block 1: Report Data -->
+   <div id="formTab" class="max-w-2xl mx-auto px-4 py-4 pb-8"><!-- Block 1: Report Data -->
     <div class="card-block">
-     <div class="card-title"><i data-lucide="file-text" style="width:18px;height:18px;color:#1E3A8A;"></i> <span id="blockTitle1">Datos del Informe</span>
+     <div class="card-title">
+      <i data-lucide="file-text" style="width:18px;height:18px;color:#1E3A8A;"></i> <span id="blockTitle1">Datos del Informe</span>
      </div>
      <div class="grid grid-cols-2 gap-3">
-      <div><label class="input-label">Nº Informe</label><input type="text" id="reportNumber" class="input-field" placeholder="INF-001">
+      <div>
+       <label class="input-label">Nº Informe</label><input type="text" id="reportNumber" class="input-field" placeholder="INF-001">
       </div>
-      <div><label class="input-label">Fecha</label><input type="date" id="reportDate" class="input-field">
+      <div>
+       <label class="input-label">Fecha</label><input type="date" id="reportDate" class="input-field">
       </div>
-      <div><label class="input-label">Cliente</label><input type="text" id="client" class="input-field" placeholder="Nombre del cliente">
+      <div>
+       <label class="input-label">Cliente</label><input type="text" id="client" class="input-field" placeholder="Nombre del cliente">
       </div>
-      <div><label class="input-label">Ubicación</label><input type="text" id="location" class="input-field" placeholder="Dirección o sitio">
+      <div>
+       <label class="input-label">Ubicación</label><input type="text" id="location" class="input-field" placeholder="Dirección o sitio">
       </div>
-      <div><label class="input-label">Equipo</label><input type="text" id="equipment" class="input-field" placeholder="Tipo de equipo">
+      <div>
+       <label class="input-label">Equipo</label><input type="text" id="equipment" class="input-field" placeholder="Tipo de equipo">
       </div>
-      <div><label class="input-label">Modelo / Serie</label><input type="text" id="model" class="input-field" placeholder="Modelo">
+      <div>
+       <label class="input-label">Modelo / Serie</label><input type="text" id="model" class="input-field" placeholder="Modelo">
       </div>
      </div>
     </div><!-- Block 2: Equipment Status -->
     <div class="card-block">
-     <div class="card-title"><i data-lucide="activity" style="width:18px;height:18px;color:#1E3A8A;"></i> Estado del Equipo
+     <div class="card-title">
+      <i data-lucide="activity" style="width:18px;height:18px;color:#1E3A8A;"></i> Estado del Equipo
      </div>
-     <div class="grid grid-cols-1 sm:grid-cols-2 gap-1">
-      <label class="radio-opt"><input type="radio" name="status" value="Operativo"> Operativo</label> <label class="radio-opt"><input type="radio" name="status" value="En mantenimiento"> En mantenimiento</label> <label class="radio-opt"><input type="radio" name="status" value="Fuera de servicio"> Fuera de servicio</label> <label class="radio-opt"><input type="radio" name="status" value="Requiere reparación" checked> Requiere reparación</label>
+     <div class="grid grid-cols-1 sm:grid-cols-2 gap-1"><label class="radio-opt"><input type="radio" name="status" value="Operativo"> Operativo</label> <label class="radio-opt"><input type="radio" name="status" value="En mantenimiento"> En mantenimiento</label> <label class="radio-opt"><input type="radio" name="status" value="Fuera de servicio"> Fuera de servicio</label> <label class="radio-opt"><input type="radio" name="status" value="Requiere reparación" checked> Requiere reparación</label>
      </div>
     </div><!-- Block 3: Photos -->
     <div class="card-block">
-     <div class="card-title"><i data-lucide="camera" style="width:18px;height:18px;color:#1E3A8A;"></i> Registro Fotográfico
+     <div class="card-title">
+      <i data-lucide="camera" style="width:18px;height:18px;color:#1E3A8A;"></i> Registro Fotográfico
      </div>
      <div class="grid grid-cols-2 gap-3" id="photoGrid">
-      <div class="photo-slot" onclick="triggerPhoto(0)">
-       <i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 1</span>
+      <div class="photo-slot" onclick="triggerPhoto(0)"><i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 1</span>
       </div>
-      <div class="photo-slot" onclick="triggerPhoto(1)">
-       <i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 2</span>
+      <div class="photo-slot" onclick="triggerPhoto(1)"><i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 2</span>
       </div>
-      <div class="photo-slot" onclick="triggerPhoto(2)">
-       <i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 3</span>
+      <div class="photo-slot" onclick="triggerPhoto(2)"><i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 3</span>
       </div>
-      <div class="photo-slot" onclick="triggerPhoto(3)">
-       <i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 4</span>
+      <div class="photo-slot" onclick="triggerPhoto(3)"><i data-lucide="camera" style="width:28px;height:28px;color:#9CA3AF;"></i> <span class="text-xs text-brand-muted mt-1">Foto 4</span>
       </div>
      </div><input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhoto(event)">
     </div><!-- Block 4: Observations -->
     <div class="card-block">
-     <div class="card-title"><i data-lucide="message-square" style="width:18px;height:18px;color:#1E3A8A;"></i> Observaciones
+     <div class="card-title">
+      <i data-lucide="message-square" style="width:18px;height:18px;color:#1E3A8A;"></i> Observaciones
      </div><textarea id="observations" class="input-field" rows="4" placeholder="Detalle las observaciones del relevamiento..."></textarea>
     </div><!-- Block 5: Signature -->
     <div class="card-block">
-     <div class="card-title"><i data-lucide="pen-tool" style="width:18px;height:18px;color:#1E3A8A;"></i> Firma Técnico Responsable
+     <div class="card-title">
+      <i data-lucide="pen-tool" style="width:18px;height:18px;color:#1E3A8A;"></i> Firma Técnico Responsable
      </div>
      <canvas id="signatureCanvas" height="160"></canvas>
-     <div class="flex items-center justify-between mt-2">
-      <button class="btn-secondary" onclick="clearSignature()"><i data-lucide="eraser" style="width:14px;height:14px;display:inline;vertical-align:-2px;"></i> Limpiar firma</button>
+     <div class="flex items-center justify-between mt-2"><button class="btn-secondary" onclick="clearSignature()"><i data-lucide="eraser" style="width:14px;height:14px;display:inline;vertical-align:-2px;"></i> Limpiar firma</button>
      </div>
-     <div class="mt-3">
-      <label class="input-label">Aclaración</label> <input type="text" id="signatureName" class="input-field" placeholder="Nombre y apellido">
+     <div class="mt-3"><label class="input-label">Aclaración</label> <input type="text" id="signatureName" class="input-field" placeholder="Nombre y apellido">
      </div>
     </div><!-- Block 6: Generate -->
-    <div class="card-block" style="background: linear-gradient(135deg, #EFF6FF, #DBEAFE); border: 1.5px solid #BFDBFE;">
-     <button class="btn-primary" id="generateBtn" onclick="generatePDF()"> <i data-lucide="file-down" style="width:20px;height:20px;display:inline;vertical-align:-4px;margin-right:6px;"></i> GENERAR PDF </button>
+    <div class="card-block" style="background: linear-gradient(135deg, #EFF6FF, #DBEAFE); border: 1.5px solid #BFDBFE;"><button class="btn-primary" id="generateBtn" onclick="generatePDF()"> <i data-lucide="file-down" style="width:20px;height:20px;display:inline;vertical-align:-4px;margin-right:6px;"></i> GENERAR PDF </button>
     </div>
    </div><!-- HISTORY TAB -->
    <div id="historyTab" class="max-w-2xl mx-auto px-4 py-4 pb-8" style="display:none;">
     <div class="card-block">
-     <div class="card-title"><i data-lucide="clock" style="width:18px;height:18px;color:#1E3A8A;"></i> Informes Guardados
+     <div class="card-title">
+      <i data-lucide="clock" style="width:18px;height:18px;color:#1E3A8A;"></i> Informes Guardados
      </div>
      <div id="historyList">
       <p class="text-brand-muted text-sm text-center py-4">No hay informes guardados aún.</p>
@@ -411,6 +406,12 @@ function getStatusColor(status) {
 
 // PDF Generation
 async function generatePDF() {
+  // Validar jsPDF
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showToast('Error: librería PDF no disponible. Recarga la página.', true);
+    return;
+  }
+  
   const btn = document.getElementById('generateBtn');
   const overlay = document.getElementById('loadingOverlay');
   btn.disabled = true;
@@ -769,5 +770,5 @@ document.getElementById('reportDate').valueAsDate = new Date();
 // Init icons
 lucide.createIcons();
 </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e278e2140090c34',t:'MTc3NDU0Mjc4Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e281f84769511e8',t:'MTc3NDU0ODc0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
